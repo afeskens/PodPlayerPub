@@ -19,10 +19,18 @@ import { colors, fallbackArt, radius, spacing, formatTime } from "../src/theme";
 
 const RATES = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
+function useSafeSettings() {
+  try {
+    return useSettings();
+  } catch {
+    return { skipForward: 5, skipBackward: 5 };
+  }
+}
+
 export default function PlayerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { skipForward, skipBackward } = useSettings();
+  const { skipForward, skipBackward } = useSafeSettings();
   const {
     currentEpisode,
     isPlaying,
