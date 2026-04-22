@@ -83,16 +83,27 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const play = useCallback(async (episode: Episode) => {
-    setState((s) => ({ ...s, loading: true, currentEpisode: episode }));
+    // Tear down any existing player BEFORE we touch state so the old audio
+    // track is guaranteed to be stopped before the new one starts.
+    const prev = playerRef.current;
+    playerRef.current = null;
+    if (prev) {
+      try { prev.pause(); } catch {}
+      try { prev.remove(); } catch {}
+    }
+    setState((s) => ({
+      ...s,
+      loading: true,
+      currentEpisode: episode,
+      isPlaying: false,
+      position: 0,
+      duration: 0,
+    }));
     try {
-      if (playerRef.current) {
-        try { playerRef.current.remove(); } catch {}
-        playerRef.current = null;
-      }
       const p = createAudioPlayer({ uri: episode.audioUrl });
       playerRef.current = p;
       p.play();
-      setState((s) => ({ ...s, isPlaying: true, loading: false, position: 0 }));
+      setState((s) => ({ ...s, isPlaying: true, loading: false }));
       await saveProgress(episode, 0);
     } catch (e) {
       console.warn("play error", e);
