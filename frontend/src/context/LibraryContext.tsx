@@ -35,6 +35,7 @@ type LibraryContextValue = {
   addDownload: (d: DownloadedEpisode) => Promise<void>;
   removeDownload: (id: string) => Promise<void>;
   getDownload: (id: string) => DownloadedEpisode | undefined;
+  reorderDownloads: (next: DownloadedEpisode[]) => Promise<void>;
   loading: boolean;
 };
 
@@ -99,10 +100,14 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [downloads]
   );
 
+  const reorderDownloads = useCallback(async (next: DownloadedEpisode[]) => {
+    await persistDls(next);
+  }, [downloads]);
+
   const value = useMemo(() => ({
     subscriptions, downloads, subscribe, unsubscribe, isSubscribed,
-    addDownload, removeDownload, getDownload, loading,
-  }), [subscriptions, downloads, subscribe, unsubscribe, isSubscribed, addDownload, removeDownload, getDownload, loading]);
+    addDownload, removeDownload, getDownload, reorderDownloads, loading,
+  }), [subscriptions, downloads, subscribe, unsubscribe, isSubscribed, addDownload, removeDownload, getDownload, reorderDownloads, loading]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

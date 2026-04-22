@@ -1,188 +1,221 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  TextInput,
+  FlatList,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
+  Keyboard,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLibrary, SubscribedPodcast } from "../../src/context/LibraryContext";
-import { usePlayer } from "../../src/context/PlayerContext";
-import { topPodcasts, SearchResult } from "../../src/api";
+import { searchPodcasts, SearchResult } from "../../src/api";
+import { useLibrary } from "../../src/context/LibraryContext";
 import { colors, fallbackArt, radius, spacing, emptyStateMic } from "../../src/theme";
 
-export default function LibraryScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { subscriptions, downloads } = useLibrary();
-  const { currentEpisode } = usePlayer();
-  const [recommended, setRecommended] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+const SUGGESTIONS = ["News", "Comedy", "True Crime", "Tech", "Business", "Science", "Health"];
 
-  const loadTop = useCallback(async () => {
+export default function SearchTab() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { isSubscribed, subscribe, unsubscribe } = useLibrary();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
+  const reqIdRef = useRef(0);
+
+  const doSearch = useCallback(async (term: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    const myId = ++reqIdRef.current;
+    setLoading(true);
+    setError(null);
+    setSearched(true);
     try {
-      const r = await topPodcasts("popular", 12);
-      setRecommended(r);
-    } catch (e) {
-      console.warn("top failed", e);
+      const r = await searchPodcasts(trimmed, 30);
+      if (myId === reqIdRef.current) setResults(r);
+    } catch (e: any) {
+      if (myId === reqIdRef.current) setError(e?.message || "Search failed");
+    } finally {
+      if (myId === reqIdRef.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await loadTop();
-      setLoading(false);
-    })();
-  }, [loadTop]);
+  const onSubmit = () => {
+    Keyboard.dismiss();
+    doSearch(query);
+  };
 
-  useFocusEffect(useCallback(() => {}, []));
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadTop();
-    setRefreshing(false);
+  const toggleSubscribe = async (p: SearchResult) => {
+    if (isSubscribed(p.collectionId)) {
+      await unsubscribe(p.collectionId);
+    } else {
+      await subscribe({
+        collectionId: p.collectionId,
+        collectionName: p.collectionName,
+        artistName: p.artistName,
+        artworkUrl600: p.artworkUrl600 || p.artworkUrl100,
+        feedUrl: p.feedUrl,
+        primaryGenreName: p.primaryGenreName,
+      });
+    }
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { paddingTop: insets.top }]}
-      contentContainerStyle={{ paddingBottom: 180 }}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
-      }
-      testID="library-scroll"
-    >
-      <View style={styles.header}>
-        <Text style={styles.eyebrow}>YOUR LIBRARY</Text>
-        <Text style={styles.h1}>Podcasts</Text>
-        <Text style={styles.sub}>
-          {subscriptions.length} subscribed · {downloads.length} downloaded
-        </Text>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.headerWrap}>
+        <Text style={styles.eyebrow}>DISCOVER</Text>
+        <Text style={styles.h1}>Search</Text>
+
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={18} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+          <TextInput
+            style={styles.input}
+            placeholder="Podcasts, shows, topics"
+            placeholderTextColor={colors.textTertiary}
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={onSubmit}
+            returnKeyType="search"
+            autoCorrect={false}
+            autoCapitalize="none"
+            testID="search-input"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setQuery("");
+                setResults([]);
+                setSearched(false);
+              }}
+              hitSlop={8}
+              testID="search-clear"
+            >
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {!searched && (
+          <View style={styles.suggestWrap}>
+            <Text style={styles.suggestLabel}>Try one of these</Text>
+            <View style={styles.chips}>
+              {SUGGESTIONS.map((s) => (
+                <TouchableOpacity
+                  key={s}
+                  style={styles.chip}
+                  onPress={() => {
+                    setQuery(s);
+                    doSearch(s);
+                  }}
+                  testID={`suggestion-${s}`}
+                >
+                  <Text style={styles.chipText}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
       </View>
 
-      <SectionTitle title="Subscriptions" />
-      {subscriptions.length === 0 ? (
-        <EmptySubs onBrowse={() => router.push("/search")} />
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.hScroll}
-        >
-          {subscriptions.map((p) => (
-            <SubCard
-              key={p.collectionId}
-              item={p}
-              onPress={() =>
-                router.push({
-                  pathname: "/podcast/[id]",
-                  params: {
-                    id: String(p.collectionId),
-                    feedUrl: p.feedUrl,
-                    name: p.collectionName,
-                    artist: p.artistName,
-                    art: p.artworkUrl600,
-                  },
-                })
-              }
-            />
-          ))}
-        </ScrollView>
+      {loading && (
+        <View style={styles.centerPad}>
+          <ActivityIndicator color={colors.accent} />
+          <Text style={styles.dim}>Searching…</Text>
+        </View>
       )}
 
-      <SectionTitle title="Popular right now" />
-      {loading ? (
-        <View style={{ padding: spacing.xl }}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
-      ) : (
-        <View style={styles.grid}>
-          {recommended.map((p) => (
-            <TouchableOpacity
-              key={p.collectionId}
-              style={styles.gridItem}
-              activeOpacity={0.85}
-              onPress={() =>
-                router.push({
-                  pathname: "/podcast/[id]",
-                  params: {
-                    id: String(p.collectionId),
-                    feedUrl: p.feedUrl,
-                    name: p.collectionName,
-                    artist: p.artistName,
-                    art: p.artworkUrl600 || p.artworkUrl100,
-                  },
-                })
-              }
-              testID={`popular-podcast-${p.collectionId}`}
-            >
-              <Image
-                source={{ uri: p.artworkUrl600 || p.artworkUrl100 || fallbackArt }}
-                style={styles.gridArt}
-                contentFit="cover"
-              />
-              <Text numberOfLines={2} style={styles.gridTitle}>
-                {p.collectionName}
-              </Text>
-              <Text numberOfLines={1} style={styles.gridArtist}>
-                {p.artistName}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {!loading && error && (
+        <View style={styles.centerPad}>
+          <Ionicons name="alert-circle" size={36} color={colors.danger} />
+          <Text style={styles.dim}>{error}</Text>
         </View>
       )}
-    </ScrollView>
+
+      {!loading && !error && searched && results.length === 0 && (
+        <View style={styles.centerPad}>
+          <Image source={{ uri: emptyStateMic }} style={styles.emptyImg} contentFit="cover" />
+          <Text style={styles.dim}>No podcasts found for “{query}”</Text>
+        </View>
+      )}
+
+      <FlatList
+        data={results}
+        keyExtractor={(item) => String(item.collectionId)}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 160 }}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => {
+          const subscribed = isSubscribed(item.collectionId);
+          return (
+            <View style={styles.row} testID={`search-result-${item.collectionId}`}>
+              <TouchableOpacity
+                style={styles.rowLeft}
+                activeOpacity={0.85}
+                onPress={() =>
+                  router.push({
+                    pathname: "/podcast/[id]",
+                    params: {
+                      id: String(item.collectionId),
+                      feedUrl: item.feedUrl,
+                      name: item.collectionName,
+                      artist: item.artistName,
+                      art: item.artworkUrl600 || item.artworkUrl100,
+                    },
+                  })
+                }
+              >
+                <Image
+                  source={{ uri: item.artworkUrl600 || item.artworkUrl100 || fallbackArt }}
+                  style={styles.rowArt}
+                  contentFit="cover"
+                />
+                <View style={styles.rowText}>
+                  <Text numberOfLines={2} style={styles.rowTitle}>
+                    {item.collectionName}
+                  </Text>
+                  <Text numberOfLines={1} style={styles.rowArtist}>
+                    {item.artistName}
+                  </Text>
+                  {!!item.primaryGenreName && (
+                    <Text numberOfLines={1} style={styles.rowGenre}>
+                      {item.primaryGenreName}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => toggleSubscribe(item)}
+                style={[styles.subBtn, subscribed && styles.subBtnActive]}
+                testID={`subscribe-btn-${item.collectionId}`}
+              >
+                <Ionicons
+                  name={subscribed ? "checkmark" : "add"}
+                  size={18}
+                  color={subscribed ? colors.textPrimary : colors.background}
+                />
+              </TouchableOpacity>
+            </View>
+          );
+        }}
+      />
+    </View>
   );
 }
 
-const SectionTitle = ({ title }: { title: string }) => (
-  <Text style={styles.sectionTitle}>{title}</Text>
-);
-
-const SubCard = ({ item, onPress }: { item: SubscribedPodcast; onPress: () => void }) => (
-  <TouchableOpacity
-    style={styles.subCard}
-    onPress={onPress}
-    activeOpacity={0.85}
-    testID={`sub-card-${item.collectionId}`}
-  >
-    <Image
-      source={{ uri: item.artworkUrl600 || fallbackArt }}
-      style={styles.subArt}
-      contentFit="cover"
-    />
-    <Text numberOfLines={2} style={styles.subCardTitle}>
-      {item.collectionName}
-    </Text>
-  </TouchableOpacity>
-);
-
-const EmptySubs = ({ onBrowse }: { onBrowse: () => void }) => (
-  <View style={styles.empty}>
-    <Image source={{ uri: emptyStateMic }} style={styles.emptyImg} contentFit="cover" />
-    <Text style={styles.emptyTitle}>No subscriptions yet</Text>
-    <Text style={styles.emptySub}>
-      Find podcasts you love and subscribe to get the latest episodes here.
-    </Text>
-    <TouchableOpacity style={styles.emptyBtn} onPress={onBrowse} testID="library-browse-btn">
-      <Ionicons name="search" size={16} color={colors.background} />
-      <Text style={styles.emptyBtnText}>Browse podcasts</Text>
-    </TouchableOpacity>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
+  headerWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
   eyebrow: {
     color: colors.accent,
     fontSize: 11,
@@ -191,72 +224,69 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   h1: { color: colors.textPrimary, fontSize: 34, fontWeight: "800", letterSpacing: -0.5 },
-  sub: { color: colors.textSecondary, fontSize: 13, marginTop: 6 },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: "700",
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  hScroll: { paddingHorizontal: spacing.lg, gap: spacing.md },
-  subCard: { width: 130, marginRight: spacing.md },
-  subArt: {
-    width: 130,
-    height: 130,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceSecondary,
-  },
-  subCardTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: "600", marginTop: 8 },
-  grid: {
+  searchRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: spacing.lg - 4,
-  },
-  gridItem: { width: "50%", padding: 4, marginBottom: spacing.md },
-  gridArt: {
-    width: "100%",
-    aspectRatio: 1,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceSecondary,
-  },
-  gridTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "600", marginTop: 8 },
-  gridArtist: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-  empty: {
     alignItems: "center",
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    marginHorizontal: spacing.lg,
-    borderRadius: radius.lg,
     backgroundColor: colors.surfaceElevated,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    paddingHorizontal: 10,
+    marginTop: spacing.md,
+    height: 46,
+    gap: 8,
   },
-  emptyImg: {
-    width: 120,
-    height: 120,
-    borderRadius: radius.md,
-    marginBottom: spacing.md,
-    opacity: 0.9,
+  input: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 15,
+    paddingVertical: Platform.OS === "ios" ? 10 : 6,
   },
-  emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "700" },
-  emptySub: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: 6,
-    marginBottom: spacing.md,
-    lineHeight: 18,
-  },
-  emptyBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.accent,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+  suggestWrap: { marginTop: spacing.md },
+  suggestLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 10, letterSpacing: 0.5 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: radius.pill,
   },
-  emptyBtnText: { color: colors.background, fontWeight: "700", fontSize: 13 },
+  chipText: { color: colors.textPrimary, fontSize: 13, fontWeight: "500" },
+  centerPad: { alignItems: "center", paddingVertical: 40, gap: 10 },
+  dim: { color: colors.textSecondary, fontSize: 13 },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  rowLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.md },
+  rowArt: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  rowText: { flex: 1 },
+  rowTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: "600" },
+  rowArtist: { color: colors.textSecondary, fontSize: 12, marginTop: 3 },
+  rowGenre: { color: colors.accent, fontSize: 11, marginTop: 3, fontWeight: "600" },
+  emptyImg: { width: 120, height: 120, borderRadius: radius.md, opacity: 0.8 },
+  subBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  subBtnActive: {
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
 });

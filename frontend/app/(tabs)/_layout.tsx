@@ -26,30 +26,24 @@ export default function TabsLayout() {
             paddingBottom: insets.bottom + 6,
             elevation: 0,
           },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: "600",
-            letterSpacing: 0.5,
-          },
+          tabBarLabelStyle: { fontSize: 11, fontWeight: "600", letterSpacing: 0.5 },
           tabBarBackground: () => (
-            <BlurView
-              tint="dark"
-              intensity={60}
-              style={StyleSheet.absoluteFill}
-            />
+            <BlurView tint="dark" intensity={60} style={StyleSheet.absoluteFill} />
           ),
           tabBarIcon: ({ color, focused, size }) => {
-            let name: keyof typeof Ionicons.glyphMap = "home";
-            if (route.name === "index") name = focused ? "library" : "library-outline";
-            else if (route.name === "search") name = focused ? "search" : "search-outline";
-            else if (route.name === "downloads") name = focused ? "cloud-download" : "cloud-download-outline";
+            let name: keyof typeof Ionicons.glyphMap = "search-outline";
+            if (route.name === "index") name = focused ? "search" : "search-outline";
+            else if (route.name === "latest") name = focused ? "flash" : "flash-outline";
+            else if (route.name === "playlist") name = focused ? "list" : "list-outline";
+            else if (route.name === "settings") name = focused ? "settings" : "settings-outline";
             return <Ionicons name={name} size={size ?? 22} color={color} />;
           },
         })}
       >
-        <Tabs.Screen name="index" options={{ title: "Library" }} />
-        <Tabs.Screen name="search" options={{ title: "Search" }} />
-        <Tabs.Screen name="downloads" options={{ title: "Downloads" }} />
+        <Tabs.Screen name="index" options={{ title: "Search" }} />
+        <Tabs.Screen name="latest" options={{ title: "Latest" }} />
+        <Tabs.Screen name="playlist" options={{ title: "Playlist" }} />
+        <Tabs.Screen name="settings" options={{ title: "Settings" }} />
       </Tabs>
     </View>
   );

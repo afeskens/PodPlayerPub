@@ -21,6 +21,7 @@ const RATES = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 export default function PlayerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { skipForward, skipBackward } = useSettings();
   const {
     currentEpisode,
     isPlaying,
@@ -132,9 +133,9 @@ export default function PlayerScreen() {
             <Text style={styles.rateText}>{rate.toFixed(rate % 1 === 0 ? 0 : 2)}x</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => skip(-15)} style={styles.skipBtn} testID="player-skip-back">
+          <TouchableOpacity onPress={() => skip(-skipBackward)} style={styles.skipBtn} testID="player-skip-back">
             <Ionicons name="play-back" size={22} color={colors.textPrimary} />
-            <Text style={styles.skipLabel}>15</Text>
+            <Text style={styles.skipLabel}>{skipBackward}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -154,9 +155,9 @@ export default function PlayerScreen() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => skip(30)} style={styles.skipBtn} testID="player-skip-forward">
+          <TouchableOpacity onPress={() => skip(skipForward)} style={styles.skipBtn} testID="player-skip-forward">
             <Ionicons name="play-forward" size={22} color={colors.textPrimary} />
-            <Text style={styles.skipLabel}>30</Text>
+            <Text style={styles.skipLabel}>{skipForward}</Text>
           </TouchableOpacity>
 
           <View style={styles.sideBtn}>

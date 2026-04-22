@@ -5,6 +5,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import { View, StyleSheet } from "react-native";
 import { PlayerProvider } from "../src/context/PlayerContext";
 import { LibraryProvider } from "../src/context/LibraryContext";
+import { SettingsProvider } from "../src/context/SettingsContext";
 import { colors } from "../src/theme";
 import MiniPlayer from "../src/components/MiniPlayer";
 
@@ -30,29 +31,31 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
       <SafeAreaProvider>
-        <LibraryProvider>
-          <PlayerProvider>
-            <StatusBar style="light" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.background },
-                animation: "fade",
-              }}
-            >
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen
-                name="player"
-                options={{
-                  presentation: "modal",
-                  animation: "slide_from_bottom",
+        <SettingsProvider>
+          <LibraryProvider>
+            <PlayerProvider>
+              <StatusBar style="light" />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: colors.background },
+                  animation: "fade",
                 }}
-              />
-              <Stack.Screen name="podcast/[id]" options={{ animation: "slide_from_right" }} />
-            </Stack>
-            <GlobalMiniPlayer />
-          </PlayerProvider>
-        </LibraryProvider>
+              >
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen
+                  name="player"
+                  options={{
+                    presentation: "modal",
+                    animation: "slide_from_bottom",
+                  }}
+                />
+                <Stack.Screen name="podcast/[id]" options={{ animation: "slide_from_right" }} />
+              </Stack>
+              <GlobalMiniPlayer />
+            </PlayerProvider>
+          </LibraryProvider>
+        </SettingsProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
