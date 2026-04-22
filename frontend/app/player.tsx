@@ -222,10 +222,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: spacing.md,
     marginBottom: spacing.lg,
-    shadowColor: "#000",
-    shadowOpacity: 0.6,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 20 },
+    boxShadow: "0px 20px 30px rgba(0,0,0,0.6)",
   },
   art: {
     width: 300,

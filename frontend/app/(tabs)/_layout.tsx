@@ -4,7 +4,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { View, StyleSheet } from "react-native";
 import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import MiniPlayer from "../../src/components/MiniPlayer";
 import { colors } from "../../src/theme";
 
 export default function TabsLayout() {
@@ -52,17 +51,6 @@ export default function TabsLayout() {
         <Tabs.Screen name="search" options={{ title: "Search" }} />
         <Tabs.Screen name="downloads" options={{ title: "Downloads" }} />
       </Tabs>
-      <View style={[styles.miniWrap, { bottom: 58 + insets.bottom }]} pointerEvents="box-none">
-        <MiniPlayer />
-      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  miniWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-  },
-});
