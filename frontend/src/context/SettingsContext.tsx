@@ -23,7 +23,7 @@ const Ctx = createContext<SettingsContextValue | null>(null);
 const KEY = "@pp:settings";
 
 const DEFAULTS: Omit<SettingsState, "loading"> = {
-  skipForward: 10,
+  skipForward: 5,
   skipBackward: 5,
   storage: "internal",
 };
