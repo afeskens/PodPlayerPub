@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  LayoutChangeEvent,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,7 +25,6 @@ export default function PlaylistTab() {
   const insets = useSafeAreaInsets();
   const { downloads, reorderDownloads, removeDownload } = useLibrary();
   const { skipForward, skipBackward } = useSettings();
-  const [dockHeight, setDockHeight] = useState(280);
   const {
     currentEpisode, isPlaying, position, duration, loading, rate,
     toggle, seekTo, skip, setRate, play,
@@ -136,7 +134,7 @@ export default function PlaylistTab() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: 58 + insets.bottom }]}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>OFFLINE QUEUE</Text>
         <Text style={styles.h1}>Playlist</Text>
@@ -161,19 +159,16 @@ export default function PlaylistTab() {
           keyExtractor={(d) => d.id}
           onDragEnd={({ data }) => reorderDownloads(data)}
           renderItem={renderItem}
-          ListFooterComponent={<View style={{ height: dockHeight + 16 }} />}
-          extraData={dockHeight}
+          containerStyle={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
+            paddingBottom: 12,
           }}
           activationDistance={10}
         />
       )}
 
-      <View
-        style={[styles.playerDock, { paddingBottom: 58 + insets.bottom + 8 }]}
-        onLayout={(e: LayoutChangeEvent) => setDockHeight(e.nativeEvent.layout.height)}
-      >
+      <View style={styles.playerDock}>
         <View style={styles.dockInner}>
           <View style={styles.dockTop}>
             <Image
@@ -310,12 +305,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   playerDock: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
+    paddingBottom: spacing.sm + 4,
     backgroundColor: "rgba(15,15,20,0.96)",
     borderTopWidth: 1,
     borderTopColor: colors.border,
