@@ -13,7 +13,7 @@ import { useSettings, StorageLocation } from "../../src/context/SettingsContext"
 import { useLibrary } from "../../src/context/LibraryContext";
 import { colors, radius, spacing } from "../../src/theme";
 
-const SKIP_OPTIONS = [10, 15, 30, 45, 60, 90];
+const SKIP_OPTIONS = [1, 3, 5, 8, 10, 15];
 
 export default function SettingsTab() {
   const insets = useSafeAreaInsets();
