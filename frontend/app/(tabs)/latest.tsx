@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -194,49 +195,50 @@ export default function LatestTab() {
             const pct = downloading[item.id];
             const downloading_ = typeof pct === "number";
             return (
-              <TouchableOpacity
-                style={styles.epCard}
-                activeOpacity={0.85}
-                onLongPress={() => handleLongPress(item)}
-                delayLongPress={400}
-                testID={`latest-episode-${item.id}`}
-              >
-                <Image source={{ uri: item.image || fallbackArt }} style={styles.epArt} contentFit="cover" />
-                <View style={styles.epBody}>
-                  <Text numberOfLines={1} style={styles.epPodcast}>
-                    {item.podcastName}
-                  </Text>
-                  <Text numberOfLines={2} style={styles.epTitle}>
-                    {item.title}
-                  </Text>
-                  <View style={styles.epMeta}>
-                    {!!item.pubDate && (
-                      <Text style={styles.metaText}>{relativeDate(item.pubDate)}</Text>
-                    )}
-                    {item.durationSec > 0 && (
-                      <>
-                        <View style={styles.dot} />
-                        <Text style={styles.metaText}>{formatTime(item.durationSec)}</Text>
-                      </>
-                    )}
-                    {isDl && (
-                      <>
-                        <View style={styles.dot} />
-                        <Ionicons name="cloud-done" size={11} color={colors.success} />
-                        <Text style={[styles.metaText, { color: colors.success }]}>Saved</Text>
-                      </>
-                    )}
-                    {downloading_ && (
-                      <>
-                        <View style={styles.dot} />
-                        <ActivityIndicator size="small" color={colors.accent} />
-                        <Text style={[styles.metaText, { color: colors.accent }]}>
-                          {Math.round((pct || 0) * 100)}%
-                        </Text>
-                      </>
-                    )}
+              <View style={styles.epCard} testID={`latest-episode-${item.id}`}>
+                <Pressable
+                  style={styles.epBodyRow}
+                  onLongPress={() => handleLongPress(item)}
+                  delayLongPress={400}
+                  testID={`latest-card-body-${item.id}`}
+                >
+                  <Image source={{ uri: item.image || fallbackArt }} style={styles.epArt} contentFit="cover" />
+                  <View style={styles.epBody}>
+                    <Text numberOfLines={1} style={styles.epPodcast}>
+                      {item.podcastName}
+                    </Text>
+                    <Text numberOfLines={2} style={styles.epTitle}>
+                      {item.title}
+                    </Text>
+                    <View style={styles.epMeta}>
+                      {!!item.pubDate && (
+                        <Text style={styles.metaText}>{relativeDate(item.pubDate)}</Text>
+                      )}
+                      {item.durationSec > 0 && (
+                        <>
+                          <View style={styles.dot} />
+                          <Text style={styles.metaText}>{formatTime(item.durationSec)}</Text>
+                        </>
+                      )}
+                      {isDl && (
+                        <>
+                          <View style={styles.dot} />
+                          <Ionicons name="cloud-done" size={11} color={colors.success} />
+                          <Text style={[styles.metaText, { color: colors.success }]}>Saved</Text>
+                        </>
+                      )}
+                      {downloading_ && (
+                        <>
+                          <View style={styles.dot} />
+                          <ActivityIndicator size="small" color={colors.accent} />
+                          <Text style={[styles.metaText, { color: colors.accent }]}>
+                            {Math.round((pct || 0) * 100)}%
+                          </Text>
+                        </>
+                      )}
+                    </View>
                   </View>
-                </View>
+                </Pressable>
                 <TouchableOpacity
                   onPress={() => playEpisode(item)}
                   hitSlop={10}
@@ -245,7 +247,7 @@ export default function LatestTab() {
                 >
                   <Ionicons name="play" size={14} color={colors.background} />
                 </TouchableOpacity>
-              </TouchableOpacity>
+              </View>
             );
           }}
         />
@@ -310,6 +312,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  epBodyRow: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
   },
   epArt: { width: 54, height: 54, borderRadius: radius.sm, backgroundColor: colors.surfaceSecondary },
   epBody: { flex: 1 },
