@@ -197,7 +197,6 @@ export default function LatestTab() {
               <TouchableOpacity
                 style={styles.epCard}
                 activeOpacity={0.85}
-                onPress={() => playEpisode(item)}
                 onLongPress={() => handleLongPress(item)}
                 delayLongPress={400}
                 testID={`latest-episode-${item.id}`}
@@ -238,9 +237,14 @@ export default function LatestTab() {
                     )}
                   </View>
                 </View>
-                <View style={styles.playCircle}>
+                <TouchableOpacity
+                  onPress={() => playEpisode(item)}
+                  hitSlop={10}
+                  style={styles.playCircle}
+                  testID={`latest-play-${item.id}`}
+                >
                   <Ionicons name="play" size={14} color={colors.background} />
-                </View>
+                </TouchableOpacity>
               </TouchableOpacity>
             );
           }}

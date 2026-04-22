@@ -26,7 +26,7 @@ export default function PlaylistTab() {
   const insets = useSafeAreaInsets();
   const { downloads, reorderDownloads, removeDownload } = useLibrary();
   const { skipForward, skipBackward } = useSettings();
-  const [dockHeight, setDockHeight] = useState(240);
+  const [dockHeight, setDockHeight] = useState(280);
   const {
     currentEpisode, isPlaying, position, duration, loading, rate,
     toggle, seekTo, skip, setRate, play,
@@ -161,9 +161,10 @@ export default function PlaylistTab() {
           keyExtractor={(d) => d.id}
           onDragEnd={({ data }) => reorderDownloads(data)}
           renderItem={renderItem}
+          ListFooterComponent={<View style={{ height: dockHeight + 16 }} />}
+          extraData={dockHeight}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
-            paddingBottom: dockHeight + 16,
           }}
           activationDistance={10}
         />
