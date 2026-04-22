@@ -1,0 +1,76 @@
+{
+  "project_name": "Premium Podcast Player",
+  "theme": "dark",
+  "archetype": "5 - Jewel & Luxury",
+  "domain_context": "Mobile Web App / React Native Expo Style Audio Player",
+  "colors": {
+    "background": "#05050A",
+    "surface_elevated": "#0F0F14",
+    "surface_secondary": "#1A1A20",
+    "text_primary": "#F8F8F8",
+    "text_secondary": "#A0A0A5",
+    "primary_accent": "#F59E0B",
+    "accent_hover": "#D97706",
+    "border": "rgba(255, 255, 255, 0.1)"
+  },
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "Manrope",
+    "scale": {
+      "h1": "text-4xl sm:text-5xl tracking-tight font-bold",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-semibold",
+      "h3": "text-xl sm:text-2xl font-medium",
+      "body": "text-base leading-relaxed",
+      "labels": "text-xs tracking-[0.2em] uppercase font-bold"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous Spacing, Mobile-First Thumb-Friendly",
+    "container_padding": "p-6",
+    "grid_system": "Bento 'Control Room' for dashboards, wide vertical lists for episodes",
+    "bottom_nav": "Fixed bottom, crystal glass surface (backdrop-blur-xl bg-black/60) with 1px top border (border-white/10)",
+    "now_playing_modal": "Full screen overlay using pure glassmorphism over blurred album art. Massive album art presence with nested radii."
+  },
+  "surface_strategies": {
+    "cards": "Flat background (surface_elevated), 1px subtle border (border-white/10), no drop shadow. Hover: slight lift (-translate-y-1)",
+    "headers_nav": "Glassmorphism (The 'Crystal' Variant) - backdrop-blur-2xl bg-[#05050A]/70, 1px inner stroke.",
+    "buttons": "Neumorphic tactile or solid accent. No pure black."
+  },
+  "motion_and_interactions": {
+    "hover_states": "ALWAYS explicitly set text color on hover. Slight scaling for album art on press.",
+    "transitions": "transition-transform 0.2s ease, opacity 0.2s ease",
+    "now_playing_transition": "Slide up from bottom for mini-player expansion to full screen."
+  },
+  "icons_and_assets": {
+    "library": "@phosphor-icons/react",
+    "installation": "yarn add @phosphor-icons/react",
+    "style": "Duotone weight for marketing/premium feel, regular for standard UI"
+  },
+  "media": {
+    "default_album_art": {
+      "url": "https://images.unsplash.com/photo-1628160634750-a81a2a780805?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDF8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMHBvZGNhc3QlMjBjb3ZlciUyMGFydHxlbnwwfHx8fDE3NzY4ODg2OTl8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Abstract colorful lights, used as fallback for missing podcast cover art"
+    },
+    "empty_state_library": {
+      "url": "https://images.unsplash.com/photo-1552174588-6733961c358e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwxfHxzdHVkaW8lMjBtaWNyb3Bob25lJTIwZGFya3xlbnwwfHx8fDE3NzY4ODg2OTl8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Black studio microphone, used for empty states in library or search"
+    }
+  },
+  "component_instructions": {
+    "tabs": "Override Shadcn fixed heights. Use h-auto. Add generous padding.",
+    "audio_player_slider": "Use Shadcn slider, customize track with primary_accent. Thicker track on mobile for thumb usability.",
+    "episode_list": "Use wide gap-4 vertical lists. Never center-align episode descriptions. Left align.",
+    "buttons": "Use data-testid for all interactive elements. Example: data-testid='play-pause-button'."
+  },
+  "instructions_to_main_agent": [
+    "This is a mobile web app acting as a podcast player. Ensure it looks native.",
+    "Use a bottom fixed tab bar for navigation (Library, Search, Downloads).",
+    "Implement a Mini-Player that floats just above the bottom tab bar when audio is active.",
+    "Clicking the Mini-Player should expand into a full-screen Now Playing view.",
+    "Avoid using generic Vercel/Stripe looks. Lean into the dark, cinematic 'Jewel & Luxury' archetype.",
+    "Ensure the Now Playing screen uses a blurred version of the album art as its background with a dark overlay.",
+    "Use @phosphor-icons/react for all iconography to maintain a premium feel.",
+    "For the audio player, ensure Play/Pause, Seek 30s Forward/Back, and playback speed buttons are prominent and thumb-sized.",
+    "Do not use transparent headers without blur. Apply 'Crystal Glass' rules."
+  ]
+}
