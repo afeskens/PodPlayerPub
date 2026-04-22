@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Slider from "@react-native-community/slider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayer } from "../src/context/PlayerContext";
+import { useSettings } from "../src/context/SettingsContext";
 import { colors, fallbackArt, radius, spacing, formatTime } from "../src/theme";
 
 const RATES = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
