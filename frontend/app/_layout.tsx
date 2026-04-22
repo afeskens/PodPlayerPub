@@ -12,13 +12,13 @@ import MiniPlayer from "../src/components/MiniPlayer";
 function GlobalMiniPlayer() {
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  // Hide on the full-screen player modal
-  if (pathname === "/player") return null;
+  // Hide on the full-screen player modal or on Playlist tab (it has its own player dock)
+  if (pathname === "/player" || pathname === "/playlist") return null;
   // Offset above bottom tabs when on a tab route; otherwise above bottom safe area
   const inTabs =
     pathname === "/" ||
-    pathname === "/search" ||
-    pathname === "/downloads";
+    pathname === "/latest" ||
+    pathname === "/settings";
   const bottomOffset = inTabs ? 58 + insets.bottom : insets.bottom;
   return (
     <View style={[styles.miniWrap, { bottom: bottomOffset, pointerEvents: "box-none" }]}>

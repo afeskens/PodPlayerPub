@@ -7,18 +7,17 @@ Mobile-first React Native (Expo) podcast player with a dark, audio-player aesthe
 Single-user (local-only). No authentication.
 
 ## Tech Stack
-- **Frontend**: Expo SDK 54, expo-router (file-based), expo-audio, expo-file-system (downloads), AsyncStorage, @react-native-community/slider, @expo/vector-icons, expo-linear-gradient, expo-blur, expo-image.
+- **Frontend**: Expo SDK 54, expo-router (file-based), expo-audio, expo-file-system (downloads), AsyncStorage, @react-native-community/slider, react-native-draggable-flatlist, @expo/vector-icons, expo-linear-gradient, expo-blur, expo-image.
 - **Backend**: FastAPI (Python) — proxies iTunes Search API (CORS-free) and parses podcast RSS feeds with `feedparser`.
-- **Storage**: AsyncStorage for subscriptions + downloads metadata; `FileSystem.documentDirectory/episodes/` for offline audio files.
+- **Storage**: AsyncStorage for subscriptions, downloads metadata, and user settings; `FileSystem.documentDirectory/episodes/` for offline audio files.
 
-## Core Features (MVP — shipped)
-1. **Podcast discovery** — iTunes Search API via `/api/search` and `/api/top?genre=`.
-2. **Subscribe / Unsubscribe** — persisted in AsyncStorage; shown on the Library screen.
-3. **Episode list** — RSS feed parsed server-side via `/api/feed?url=`; episodes with title, description, duration, pubDate, audio URL.
-4. **Full audio player** — play / pause, seek slider, skip back 15s, skip forward 30s, playback rate cycling (0.75× → 2.0×), background playback mode.
-5. **Mini-Player** — persists above the bottom tab bar (and on podcast detail) while audio is active; tap opens the Now Playing modal.
-6. **Offline downloads** — per-episode "Download" button uses `FileSystem.createDownloadResumable` with progress %; downloaded episodes play from local URI. Web preview shows an alert (native / Expo Go only).
-7. **Tab navigation** — Library, Search, Downloads.
+## Navigation (4 bottom tabs)
+1. **Search** (`/`) — live iTunes search. Each result has an inline round +/✓ button to subscribe/unsubscribe instantly. Tapping the row opens the podcast detail hero.
+2. **Latest** (`/latest`) — aggregates the latest episodes across all subscribed podcasts, sorted by publication date. Circular refresh button in the header re-fetches all feeds. **Long-press an episode (≥400 ms)** to download it offline.
+3. **Playlist** (`/playlist`) — list of downloaded episodes. **Hold-drag an episode to reorder the queue.** Full player controls docked at the bottom (prev, skip-back, play/pause, skip-forward, next, slider, playback rate). Tap a row to play; the × button deletes the download.
+4. **Settings** (`/settings`) — Storage segmented control (Internal / SD Card, SD card enabled on Android only), Skip-forward and Skip-backward chips [10, 15, 30, 45, 60, 90] seconds, and About info. All settings persist via AsyncStorage and are used by the player immediately.
+
+Plus a stack route `/podcast/[id]` for the full podcast detail hero, and a modal `/player` for the Now Playing screen.
 
 ## Backend API
 | Method | Endpoint                              | Purpose |
@@ -29,11 +28,12 @@ Single-user (local-only). No authentication.
 | GET    | `/api/feed?url=&limit=`               | Parse RSS into JSON (title, author, image, episodes[]) |
 
 ## Design System
-Follows `/app/design_guidelines.json`: background `#05050A`, surface `#0F0F14`, amber accent `#F59E0B`, generous spacing, large album art with blurred background on Now Playing, glassmorphism tab bar.
+Follows `/app/design_guidelines.json`: background `#05050A`, surface `#0F0F14`, amber accent `#F59E0B`, generous spacing, glassmorphism tab bar, blurred album-art backgrounds on the Now Playing screen.
 
-## Smart Enhancement (future-ready revenue/engagement lever)
-Add a simple **"Smart Queue & Daily Digest"** feature that auto-builds a personalized play-queue from the user's subscriptions based on unplayed newest episodes and time-of-day listening patterns — high retention/engagement lever and the natural hook for a later Pro subscription (e.g., unlimited queue, transcripts, cross-device sync).
+## Smart Enhancement
+"Smart Queue & Daily Digest" — auto-builds a personalized play queue from subscriptions based on unplayed newest episodes + listening time-of-day patterns. Strong retention lever and natural hook for a future Pro tier.
 
 ## Known Limitations
-- Downloads require native/Expo Go (not supported on web preview).
-- Resume-from-last-position is saved but not yet auto-restored on launch (next iteration).
+- Offline downloads require native/Expo Go (web preview shows an alert — mobile filesystem isn't available in browser).
+- "SD Card" storage option is informational/Android-only; on iOS/web it is visible but disabled with a hint.
+- Resume-from-last-position is saved but not auto-restored on launch.
