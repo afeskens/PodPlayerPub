@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Pressable,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -196,8 +195,9 @@ export default function LatestTab() {
             const downloading_ = typeof pct === "number";
             return (
               <View style={styles.epCard} testID={`latest-episode-${item.id}`}>
-                <Pressable
+                <TouchableOpacity
                   style={styles.epBodyRow}
+                  activeOpacity={1}
                   onLongPress={() => handleLongPress(item)}
                   delayLongPress={400}
                   testID={`latest-card-body-${item.id}`}
@@ -238,7 +238,7 @@ export default function LatestTab() {
                       )}
                     </View>
                   </View>
-                </Pressable>
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => playEpisode(item)}
                   hitSlop={10}
