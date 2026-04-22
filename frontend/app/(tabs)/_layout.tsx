@@ -35,7 +35,7 @@ export default function TabsLayout() {
             if (route.name === "index") name = focused ? "search" : "search-outline";
             else if (route.name === "latest") name = focused ? "flash" : "flash-outline";
             else if (route.name === "playlist") name = focused ? "list" : "list-outline";
-            else if (route.name === "settings") name = focused ? "settings" : "settings-outline";
+            else if (route.name === "library") name = focused ? "albums" : "albums-outline";
             return <Ionicons name={name} size={size ?? 22} color={color} />;
           },
         })}
@@ -43,7 +43,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="index" options={{ title: "Search" }} />
         <Tabs.Screen name="latest" options={{ title: "Latest" }} />
         <Tabs.Screen name="playlist" options={{ title: "Playlist" }} />
-        <Tabs.Screen name="settings" options={{ title: "Settings" }} />
+        <Tabs.Screen name="library" options={{ title: "Library" }} />
       </Tabs>
     </View>
   );

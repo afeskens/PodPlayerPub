@@ -18,7 +18,7 @@ function GlobalMiniPlayer() {
   const inTabs =
     pathname === "/" ||
     pathname === "/latest" ||
-    pathname === "/settings";
+    pathname === "/library";
   const bottomOffset = inTabs ? 58 + insets.bottom : insets.bottom;
   return (
     <View style={[styles.miniWrap, { bottom: bottomOffset, pointerEvents: "box-none" }]}>
@@ -51,6 +51,7 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen name="podcast/[id]" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="settings" options={{ animation: "slide_from_right" }} />
               </Stack>
               <GlobalMiniPlayer />
             </PlayerProvider>
