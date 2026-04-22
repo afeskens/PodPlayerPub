@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  LayoutChangeEvent,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -25,6 +26,7 @@ export default function PlaylistTab() {
   const insets = useSafeAreaInsets();
   const { downloads, reorderDownloads, removeDownload } = useLibrary();
   const { skipForward, skipBackward } = useSettings();
+  const [dockHeight, setDockHeight] = useState(240);
   const {
     currentEpisode, isPlaying, position, duration, loading, rate,
     toggle, seekTo, skip, setRate, play,
@@ -161,13 +163,16 @@ export default function PlaylistTab() {
           renderItem={renderItem}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
-            paddingBottom: 260 + insets.bottom,
+            paddingBottom: dockHeight + 16,
           }}
           activationDistance={10}
         />
       )}
 
-      <View style={[styles.playerDock, { paddingBottom: 58 + insets.bottom + 8 }]}>
+      <View
+        style={[styles.playerDock, { paddingBottom: 58 + insets.bottom + 8 }]}
+        onLayout={(e: LayoutChangeEvent) => setDockHeight(e.nativeEvent.layout.height)}
+      >
         <View style={styles.dockInner}>
           <View style={styles.dockTop}>
             <Image
