@@ -23,7 +23,7 @@ import { colors, fallbackArt, radius, spacing, emptyStateMic, formatTime } from 
 
 export default function PlaylistTab() {
   const insets = useSafeAreaInsets();
-  const { downloads, reorderDownloads, removeDownload, isPlayed } = useLibrary();
+  const { downloads, reorderDownloads, removeDownload, isPlayed, playedIds } = useLibrary();
   const { skipForward, skipBackward } = useSettings();
   const {
     currentEpisode, isPlaying, position, duration, loading, rate,
@@ -176,6 +176,7 @@ export default function PlaylistTab() {
           keyExtractor={(d) => d.id}
           onDragEnd={({ data }) => reorderDownloads(data)}
           renderItem={renderItem}
+          extraData={{ playedIds, currentEpisodeId: currentEpisode?.id }}
           containerStyle={{ flex: 1 }}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,
