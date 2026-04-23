@@ -12,12 +12,14 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Slider from "@react-native-community/slider";
 import { useSettings } from "../src/context/SettingsContext";
 import { useLibrary } from "../src/context/LibraryContext";
 import { colors, radius, spacing } from "../src/theme";
 import { exportOpml, importOpml } from "../src/opml";
 
-const SKIP_OPTIONS = [1, 3, 5, 8, 10, 15];
+const SKIP_MIN = 1;
+const SKIP_MAX = 20;
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -137,36 +139,46 @@ export default function SettingsScreen() {
         <Section title="Player">
           <Text style={styles.desc}>How far each skip button jumps.</Text>
 
-          <Text style={styles.rowLabel}>Skip forward</Text>
-          <View style={styles.chips} testID="skip-forward-chips">
-            {SKIP_OPTIONS.map((n) => (
-              <TouchableOpacity
-                key={`fwd-${n}`}
-                style={[styles.chip, skipForward === n && styles.chipActive]}
-                onPress={() => setSkipForward(n)}
-                testID={`skip-forward-${n}`}
-              >
-                <Text style={[styles.chipText, skipForward === n && styles.chipTextActive]}>
-                  {n}s
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.sliderLabelRow}>
+            <Text style={styles.rowLabel}>Skip forward</Text>
+            <Text style={styles.sliderValue}>{skipForward}s</Text>
+          </View>
+          <Slider
+            style={styles.slider}
+            value={skipForward}
+            minimumValue={SKIP_MIN}
+            maximumValue={SKIP_MAX}
+            step={1}
+            minimumTrackTintColor={colors.accent}
+            maximumTrackTintColor="rgba(255,255,255,0.18)"
+            thumbTintColor={colors.accent}
+            onValueChange={(v) => setSkipForward(Math.round(v))}
+            testID="skip-forward-slider"
+          />
+          <View style={styles.sliderTicks}>
+            <Text style={styles.sliderTick}>{SKIP_MIN}s</Text>
+            <Text style={styles.sliderTick}>{SKIP_MAX}s</Text>
           </View>
 
-          <Text style={[styles.rowLabel, { marginTop: spacing.md }]}>Skip backward</Text>
-          <View style={styles.chips} testID="skip-backward-chips">
-            {SKIP_OPTIONS.map((n) => (
-              <TouchableOpacity
-                key={`bwd-${n}`}
-                style={[styles.chip, skipBackward === n && styles.chipActive]}
-                onPress={() => setSkipBackward(n)}
-                testID={`skip-backward-${n}`}
-              >
-                <Text style={[styles.chipText, skipBackward === n && styles.chipTextActive]}>
-                  {n}s
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={[styles.sliderLabelRow, { marginTop: spacing.md }]}>
+            <Text style={styles.rowLabel}>Skip backward</Text>
+            <Text style={styles.sliderValue}>{skipBackward}s</Text>
+          </View>
+          <Slider
+            style={styles.slider}
+            value={skipBackward}
+            minimumValue={SKIP_MIN}
+            maximumValue={SKIP_MAX}
+            step={1}
+            minimumTrackTintColor={colors.accent}
+            maximumTrackTintColor="rgba(255,255,255,0.18)"
+            thumbTintColor={colors.accent}
+            onValueChange={(v) => setSkipBackward(Math.round(v))}
+            testID="skip-backward-slider"
+          />
+          <View style={styles.sliderTicks}>
+            <Text style={styles.sliderTick}>{SKIP_MIN}s</Text>
+            <Text style={styles.sliderTick}>{SKIP_MAX}s</Text>
           </View>
         </Section>
 
@@ -249,6 +261,19 @@ const styles = StyleSheet.create({
   actionPrimaryText: { color: colors.background, fontWeight: "700", fontSize: 13 },
   actionSecondaryText: { color: colors.textPrimary, fontWeight: "700", fontSize: 13 },
   rowLabel: { color: colors.textPrimary, fontSize: 13, fontWeight: "600", marginBottom: 8 },
+  sliderLabelRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  sliderValue: {
+    color: colors.accent, fontSize: 14, fontWeight: "700",
+    fontVariant: ["tabular-nums"], marginBottom: 8,
+  },
+  slider: { width: "100%", height: 34 },
+  sliderTicks: {
+    flexDirection: "row", justifyContent: "space-between",
+    paddingHorizontal: 4, marginTop: -4,
+  },
+  sliderTick: { color: colors.textTertiary, fontSize: 11 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill,

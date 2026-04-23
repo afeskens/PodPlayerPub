@@ -196,7 +196,10 @@ export default function LatestTab() {
             const pct = downloading[item.id];
             const downloading_ = typeof pct === "number";
             return (
-              <View style={styles.epCard} testID={`latest-episode-${item.id}`}>
+              <View
+                style={[styles.epCard, isDl && styles.epCardDownloaded]}
+                testID={`latest-episode-${item.id}`}
+              >
                 <TouchableOpacity
                   style={styles.epBodyRow}
                   activeOpacity={1}
@@ -314,6 +317,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  epCardDownloaded: {
+    backgroundColor: colors.downloadedBg,
+    borderColor: colors.downloadedBorder,
   },
   epBodyRow: {
     flex: 1,

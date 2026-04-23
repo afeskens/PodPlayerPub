@@ -12,6 +12,8 @@ export const colors = {
   borderStrong: "rgba(255, 255, 255, 0.14)",
   danger: "#EF4444",
   success: "#10B981",
+  downloadedBg: "#0C2A1F",
+  downloadedBorder: "#15513B",
   overlay: "rgba(0,0,0,0.55)",
 };
 
