@@ -119,7 +119,8 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addDownload = useCallback(async (d: DownloadedEpisode) => {
     const filtered = dlsRef.current.filter((x) => x.id !== d.id);
-    await persistDls([d, ...filtered]);
+    // Newly downloaded episodes go to the BOTTOM of the playlist.
+    await persistDls([...filtered, d]);
   }, [persistDls]);
 
   const removeDownload = useCallback(async (id: string) => {
