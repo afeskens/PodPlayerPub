@@ -22,6 +22,9 @@ type PlayerState = {
   duration: number; // seconds
   rate: number;
   loading: boolean;
+  sleepTimerMinutes: number; // 0 = off
+  sleepTimerEndsAt: number | null; // epoch ms, null = off
+  sleepTimerRemainingSec: number | null;
 };
 
 type PlayerContextValue = PlayerState & {
@@ -31,6 +34,7 @@ type PlayerContextValue = PlayerState & {
   skip: (deltaSeconds: number) => Promise<void>;
   setRate: (rate: number) => Promise<void>;
   stop: () => Promise<void>;
+  setSleepTimer: (minutes: number) => void;
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -46,6 +50,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     duration: 0,
     rate: 1.0,
     loading: false,
+    sleepTimerMinutes: 0,
+    sleepTimerEndsAt: null,
+    sleepTimerRemainingSec: null,
   });
 
   useEffect(() => {
@@ -165,13 +172,62 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       duration: 0,
       rate: 1.0,
       loading: false,
+      sleepTimerMinutes: 0,
+      sleepTimerEndsAt: null,
+      sleepTimerRemainingSec: null,
     });
   }, []);
 
+  // Sleep timer: pauses playback when time runs out. 0 = off.
+  const setSleepTimer = useCallback((minutes: number) => {
+    const m = Math.max(0, Math.min(120, Math.round(minutes)));
+    if (m === 0) {
+      setState((s) => ({
+        ...s,
+        sleepTimerMinutes: 0,
+        sleepTimerEndsAt: null,
+        sleepTimerRemainingSec: null,
+      }));
+    } else {
+      const endsAt = Date.now() + m * 60 * 1000;
+      setState((s) => ({
+        ...s,
+        sleepTimerMinutes: m,
+        sleepTimerEndsAt: endsAt,
+        sleepTimerRemainingSec: m * 60,
+      }));
+    }
+  }, []);
+
+  // Tick sleep timer every second while active.
+  useEffect(() => {
+    if (!state.sleepTimerEndsAt) return;
+    const endsAt = state.sleepTimerEndsAt;
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+      if (remaining <= 0) {
+        const p = playerRef.current;
+        if (p) { try { p.pause(); } catch {} }
+        setState((s) => ({
+          ...s,
+          isPlaying: false,
+          sleepTimerMinutes: 0,
+          sleepTimerEndsAt: null,
+          sleepTimerRemainingSec: null,
+        }));
+      } else {
+        setState((s) => ({ ...s, sleepTimerRemainingSec: remaining }));
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [state.sleepTimerEndsAt]);
+
   const value = useMemo<PlayerContextValue>(() => ({
     ...state,
-    play, toggle, seekTo, skip, setRate, stop,
-  }), [state, play, toggle, seekTo, skip, setRate, stop]);
+    play, toggle, seekTo, skip, setRate, stop, setSleepTimer,
+  }), [state, play, toggle, seekTo, skip, setRate, stop, setSleepTimer]);
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 };

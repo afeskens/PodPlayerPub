@@ -15,11 +15,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Slider from "@react-native-community/slider";
 import { useSettings } from "../src/context/SettingsContext";
 import { useLibrary } from "../src/context/LibraryContext";
+import { usePlayer } from "../src/context/PlayerContext";
 import { colors, radius, spacing } from "../src/theme";
 import { exportOpml, importOpml } from "../src/opml";
 
 const SKIP_MIN = 1;
 const SKIP_MAX = 20;
+const SLEEP_MIN = 0;
+const SLEEP_MAX = 120;
+
+function formatSleep(minutes: number, remainingSec: number | null): string {
+  if (minutes === 0) return "Off";
+  if (remainingSec == null) return `${minutes} min`;
+  const m = Math.floor(remainingSec / 60);
+  const s = remainingSec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -29,8 +40,17 @@ export default function SettingsScreen() {
     setSkipForward, setSkipBackward,
   } = useSettings();
   const { subscriptions, downloads, subscribe } = useLibrary();
+  const {
+    sleepTimerMinutes, sleepTimerRemainingSec, setSleepTimer,
+  } = usePlayer();
+  const [sleepSliderValue, setSleepSliderValue] = useState(sleepTimerMinutes);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+
+  // Keep slider in sync if timer auto-expires or is set elsewhere
+  React.useEffect(() => {
+    setSleepSliderValue(sleepTimerMinutes);
+  }, [sleepTimerMinutes]);
 
   const handleExport = async () => {
     setExporting(true);
@@ -180,6 +200,37 @@ export default function SettingsScreen() {
             <Text style={styles.sliderTick}>{SKIP_MIN}s</Text>
             <Text style={styles.sliderTick}>{SKIP_MAX}s</Text>
           </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.sliderLabelRow}>
+            <Text style={styles.rowLabel}>Sleep timer</Text>
+            <Text
+              style={[
+                styles.sliderValue,
+                sleepTimerMinutes > 0 && sleepTimerRemainingSec != null && styles.sliderValueLive,
+              ]}
+            >
+              {formatSleep(sleepTimerMinutes, sleepTimerRemainingSec)}
+            </Text>
+          </View>
+          <Slider
+            style={styles.slider}
+            value={sleepSliderValue}
+            minimumValue={SLEEP_MIN}
+            maximumValue={SLEEP_MAX}
+            step={5}
+            minimumTrackTintColor={colors.accent}
+            maximumTrackTintColor="rgba(255,255,255,0.18)"
+            thumbTintColor={colors.accent}
+            onValueChange={(v) => setSleepSliderValue(Math.round(v))}
+            onSlidingComplete={(v) => setSleepTimer(Math.round(v))}
+            testID="sleep-timer-slider"
+          />
+          <View style={styles.sliderTicks}>
+            <Text style={styles.sliderTick}>Off</Text>
+            <Text style={styles.sliderTick}>{SLEEP_MAX} min</Text>
+          </View>
         </Section>
 
         <Section title="About">
@@ -267,6 +318,10 @@ const styles = StyleSheet.create({
   sliderValue: {
     color: colors.accent, fontSize: 14, fontWeight: "700",
     fontVariant: ["tabular-nums"], marginBottom: 8,
+  },
+  sliderValueLive: { color: "#22C55E" },
+  divider: {
+    height: 1, backgroundColor: colors.border, marginVertical: spacing.md,
   },
   slider: { width: "100%", height: 34 },
   sliderTicks: {
