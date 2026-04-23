@@ -185,7 +185,7 @@ export default function PlaylistTab() {
       ) : (
         <DraggableFlatList
           data={downloads}
-          keyExtractor={(d) => d.id}
+          keyExtractor={(d) => `${d.id}:${isPlayed(d.id) ? "p" : "u"}:${currentEpisode?.id === d.id ? "c" : "n"}`}
           onDragEnd={({ data }) => reorderDownloads(data)}
           renderItem={renderItem}
           extraData={{ playedIds, currentEpisodeId: currentEpisode?.id }}
