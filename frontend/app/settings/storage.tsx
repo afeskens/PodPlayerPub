@@ -40,14 +40,6 @@ export default function StoragePicker() {
       path: `${FileSystem.documentDirectory || ""}episodes/`,
       available: true,
     },
-    {
-      key: "cache",
-      label: "Cache",
-      subtitle: "Temporary storage that the OS may clear automatically.",
-      icon: "flash",
-      path: `${FileSystem.cacheDirectory || ""}episodes/`,
-      available: true,
-    },
   ];
 
   const chooseSAF = async () => {

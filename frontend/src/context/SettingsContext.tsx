@@ -38,12 +38,21 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const raw = await AsyncStorage.getItem(KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
+          // If user previously chose the (now-removed) Cache location, fall back to App Documents.
+          const cacheDir = FileSystem.cacheDirectory || "__no_cache__";
+          const isLegacyCache =
+            typeof parsed.storagePath === "string" &&
+            parsed.storagePath.startsWith(cacheDir);
           setState({
             ...DEFAULTS,
             ...parsed,
             // migrate legacy { storage: "internal"|"sdcard" } to storagePath
-            storagePath: parsed.storagePath || DEFAULTS.storagePath,
-            storageLabel: parsed.storageLabel || DEFAULTS.storageLabel,
+            storagePath: isLegacyCache
+              ? DEFAULTS.storagePath
+              : parsed.storagePath || DEFAULTS.storagePath,
+            storageLabel: isLegacyCache
+              ? DEFAULTS.storageLabel
+              : parsed.storageLabel || DEFAULTS.storageLabel,
             loading: false,
           });
         } else {
