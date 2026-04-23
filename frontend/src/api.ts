@@ -1,4 +1,7 @@
-const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
+// Fully client-side API — no backend required.
+// - Search/Top: calls iTunes Search API directly (public, CORS-enabled)
+// - Feed: downloads RSS XML and parses on device with react-native-rss-parser
+import * as rssParser from "react-native-rss-parser";
 
 export type SearchResult = {
   collectionId: number;
@@ -29,23 +32,109 @@ export type Feed = {
   episodes: FeedEpisode[];
 };
 
+const ITUNES = "https://itunes.apple.com/search";
+
+function mapItunesResult(r: any): SearchResult {
+  return {
+    collectionId: r.collectionId,
+    collectionName: r.collectionName || "",
+    artistName: r.artistName || "",
+    artworkUrl600: r.artworkUrl600 || r.artworkUrl100 || "",
+    artworkUrl100: r.artworkUrl100 || "",
+    feedUrl: r.feedUrl || "",
+    primaryGenreName: r.primaryGenreName || "",
+    trackCount: r.trackCount || 0,
+  };
+}
+
 export async function searchPodcasts(term: string, limit = 25): Promise<SearchResult[]> {
-  const res = await fetch(`${BASE}/api/search?term=${encodeURIComponent(term)}&limit=${limit}`);
+  const qs = new URLSearchParams({
+    term,
+    media: "podcast",
+    limit: String(limit),
+  });
+  const res = await fetch(`${ITUNES}?${qs.toString()}`);
   if (!res.ok) throw new Error(`Search failed: ${res.status}`);
   const data = await res.json();
-  return data.results || [];
+  return (data.results || []).map(mapItunesResult);
 }
 
 export async function topPodcasts(genre?: string, limit = 20): Promise<SearchResult[]> {
-  const q = genre ? `?genre=${encodeURIComponent(genre)}&limit=${limit}` : `?limit=${limit}`;
-  const res = await fetch(`${BASE}/api/top${q}`);
-  if (!res.ok) throw new Error(`Top failed: ${res.status}`);
-  const data = await res.json();
-  return data.results || [];
+  // Approximate "top" using the iTunes search with the genre keyword.
+  return searchPodcasts(genre || "news", limit);
+}
+
+function stripHtml(s: string): string {
+  if (!s) return "";
+  return s.replace(/<[^>]+>/g, "").trim();
+}
+
+function pickAudioUrl(item: any): string {
+  // react-native-rss-parser exposes enclosures[] with { url, length, mimeType }
+  const enclosures = item.enclosures || [];
+  const audio = enclosures.find(
+    (e: any) => typeof e?.mimeType === "string" && e.mimeType.toLowerCase().includes("audio")
+  );
+  if (audio?.url) return audio.url;
+  if (enclosures[0]?.url) return enclosures[0].url;
+  return "";
+}
+
+function pickItemImage(item: any, fallback: string): string {
+  // itunes:image via itunes namespace (parser exposes item.itunes?.image)
+  if (item.itunes?.image) return item.itunes.image;
+  if (item.image?.url) return item.image.url;
+  return fallback;
+}
+
+function pickDuration(item: any): string {
+  if (item.itunes?.duration) return String(item.itunes.duration);
+  return "";
 }
 
 export async function fetchFeed(feedUrl: string, limit = 100): Promise<Feed> {
-  const res = await fetch(`${BASE}/api/feed?url=${encodeURIComponent(feedUrl)}&limit=${limit}`);
-  if (!res.ok) throw new Error(`Feed failed: ${res.status}`);
-  return res.json();
+  let res: Response;
+  try {
+    res = await fetch(feedUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 PodcastPlayer" },
+    });
+  } catch (e: any) {
+    throw new Error(`Feed fetch failed: ${e?.message || "network error"}`);
+  }
+  if (!res.ok) throw new Error(`Feed fetch failed: ${res.status}`);
+  const xml = await res.text();
+
+  let rss;
+  try {
+    rss = await rssParser.parse(xml);
+  } catch (e: any) {
+    throw new Error(`Feed parse failed: ${e?.message || "invalid XML"}`);
+  }
+
+  const feedImage =
+    rss.image?.url ||
+    // react-native-rss-parser exposes itunes image at rss.itunes?.image
+    (rss as any).itunes?.image ||
+    "";
+
+  const episodes: FeedEpisode[] = (rss.items || []).slice(0, limit).map((it: any, i: number) => {
+    const rawDesc: string = it.description || it.content || it.itunes?.summary || "";
+    return {
+      id: it.id || it.links?.[0]?.url || `${i}-${it.title || "episode"}`,
+      title: it.title || "",
+      description: stripHtml(rawDesc).slice(0, 1000),
+      audioUrl: pickAudioUrl(it),
+      pubDate: it.published || "",
+      duration: pickDuration(it),
+      image: pickItemImage(it, feedImage),
+    };
+  });
+
+  return {
+    title: rss.title || "",
+    author: rss.authors?.[0]?.name || (rss as any).itunes?.author || "",
+    description: stripHtml(rss.description || "").slice(0, 2000),
+    image: feedImage,
+    episodes,
+  };
 }
