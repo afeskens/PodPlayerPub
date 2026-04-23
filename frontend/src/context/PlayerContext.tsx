@@ -80,7 +80,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     currentEpisodeRef.current = state.currentEpisode;
   }, [state.currentEpisode]);
 
-  // Polling for progress + end-of-track detection (auto-advance to next in queue).
+  // Polling for progress only. End-of-track is handled via a proper native
+  // event listener below (more reliable than comparing position to duration).
   useEffect(() => {
     const interval = setInterval(() => {
       const p = playerRef.current;
@@ -94,20 +95,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           duration: dur || s.duration,
           isPlaying: p.playing || false,
         }));
-
-        // Detect end-of-track: within 0.4s of duration AND duration is known AND
-        // not fired yet for this episode.
-        const cur = currentEpisodeRef.current;
-        if (cur && dur > 0 && pos >= dur - 0.4 && endedRef.current !== cur.id) {
-          endedRef.current = cur.id;
-          handleEpisodeEnded(cur);
-        }
       } catch {
         // ignore
       }
     }, 500);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fires when the current episode reaches the end. Marks it played, and if it
@@ -158,6 +150,32 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const p = createAudioPlayer({ uri: episode.audioUrl });
       playerRef.current = p;
+
+      // Subscribe to native playback status updates — `didJustFinish` fires
+      // reliably when the track completes, regardless of duration accuracy.
+      try {
+        const sub = (p as any).addListener("playbackStatusUpdate", (status: any) => {
+          // Mirror playing/position/duration into React state so UI updates
+          // without relying solely on the 500ms poll.
+          if (status) {
+            setState((s) => ({
+              ...s,
+              position: typeof status.currentTime === "number" ? status.currentTime : s.position,
+              duration: typeof status.duration === "number" && status.duration > 0 ? status.duration : s.duration,
+              isPlaying: !!status.playing,
+            }));
+            if (status.didJustFinish && endedRef.current !== episode.id) {
+              endedRef.current = episode.id;
+              handleEpisodeEnded(episode);
+            }
+          }
+        });
+        // Stash the subscription so we can clean it up later.
+        (p as any).__sub = sub;
+      } catch (e) {
+        console.warn("addListener failed", e);
+      }
+
       p.play();
       setState((s) => ({ ...s, isPlaying: true, loading: false }));
       await saveProgress(episode, 0);
@@ -165,7 +183,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.warn("play error", e);
       setState((s) => ({ ...s, loading: false, isPlaying: false }));
     }
-  }, [saveProgress]);
+  }, [saveProgress, handleEpisodeEnded]);
 
   // Keep playRef up to date so handleEpisodeEnded can call it without deps.
   useEffect(() => {

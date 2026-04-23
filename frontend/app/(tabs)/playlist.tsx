@@ -23,7 +23,7 @@ import { colors, fallbackArt, radius, spacing, emptyStateMic, formatTime } from 
 
 export default function PlaylistTab() {
   const insets = useSafeAreaInsets();
-  const { downloads, reorderDownloads, removeDownload, isPlayed, playedIds } = useLibrary();
+  const { downloads, reorderDownloads, removeDownload, isPlayed, playedIds, markPlayed, unmarkPlayed } = useLibrary();
   const { skipForward, skipBackward } = useSettings();
   const {
     currentEpisode, isPlaying, position, duration, loading, rate,
@@ -136,6 +136,18 @@ export default function PlaylistTab() {
               </Text>
             </View>
           </View>
+          <TouchableOpacity
+            onPress={() => (played ? unmarkPlayed(item.id) : markPlayed(item.id))}
+            hitSlop={8}
+            style={styles.playedBtn}
+            testID={`playlist-played-${item.id}`}
+          >
+            <Ionicons
+              name={played ? "checkmark-circle" : "checkmark-circle-outline"}
+              size={18}
+              color={played ? "#4E9BFF" : colors.textSecondary}
+            />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => confirmRemove(item)}
             hitSlop={8}
@@ -305,6 +317,10 @@ const styles = StyleSheet.create({
     borderColor: colors.playedBorder,
   },
   rowDragging: { boxShadow: "0px 12px 24px rgba(0,0,0,0.5)" },
+  playedBtn: {
+    width: 28, height: 28, alignItems: "center", justifyContent: "center",
+    marginRight: 2,
+  },
   indexText: {
     color: colors.textTertiary,
     fontSize: 11,
