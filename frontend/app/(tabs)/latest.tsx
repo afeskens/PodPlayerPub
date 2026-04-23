@@ -38,7 +38,7 @@ type LatestEp = {
 export default function LatestTab() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { subscriptions, addDownload, getDownload } = useLibrary();
+  const { subscriptions, addDownload, getDownload, isPlayed } = useLibrary();
   const { play } = usePlayer();
   const { storagePath } = useSettings();
   const [episodes, setEpisodes] = useState<LatestEp[]>([]);
@@ -52,7 +52,8 @@ export default function LatestTab() {
       return;
     }
     const results = await Promise.allSettled(
-      subscriptions.map((s) => fetchFeed(s.feedUrl, 10).then((f) => ({ s, f })))
+      // Only fetch the 2 newest episodes per feed — much faster than 10.
+      subscriptions.map((s) => fetchFeed(s.feedUrl, 2).then((f) => ({ s, f })))
     );
     const all: LatestEp[] = [];
     for (const r of results) {
@@ -194,11 +195,16 @@ export default function LatestTab() {
           }
           renderItem={({ item }) => {
             const isDl = !!getDownload(item.id);
+            const played = isPlayed(item.id);
             const pct = downloading[item.id];
             const downloading_ = typeof pct === "number";
             return (
               <View
-                style={[styles.epCard, isDl && styles.epCardDownloaded]}
+                style={[
+                  styles.epCard,
+                  isDl && styles.epCardDownloaded,
+                  played && !isDl && styles.epCardPlayed,
+                ]}
                 testID={`latest-episode-${item.id}`}
               >
                 <TouchableOpacity
@@ -322,6 +328,10 @@ const styles = StyleSheet.create({
   epCardDownloaded: {
     backgroundColor: colors.downloadedBg,
     borderColor: colors.downloadedBorder,
+  },
+  epCardPlayed: {
+    backgroundColor: colors.playedBg,
+    borderColor: colors.playedBorder,
   },
   epBodyRow: {
     flex: 1,

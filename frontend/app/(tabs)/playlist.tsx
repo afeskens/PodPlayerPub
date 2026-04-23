@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -27,9 +27,24 @@ export default function PlaylistTab() {
   const { skipForward, skipBackward } = useSettings();
   const {
     currentEpisode, isPlaying, position, duration, loading, rate,
-    toggle, seekTo, skip, setRate, play,
+    toggle, seekTo, skip, setRate, play, setQueue,
   } = usePlayer();
   const [seeking, setSeeking] = useState<number | null>(null);
+
+  // Keep the player's queue in sync with the current downloads list so that
+  // auto-advance on track-end knows which episode to play next.
+  useEffect(() => {
+    setQueue(
+      downloads.map((d) => ({
+        id: d.id,
+        title: d.title,
+        audioUrl: d.localUri,
+        image: d.image,
+        podcastName: d.podcastName,
+        podcastId: d.podcastId,
+      }))
+    );
+  }, [downloads, setQueue]);
 
   const playItem = (d: DownloadedEpisode) => {
     play({

@@ -25,10 +25,12 @@ export type DownloadedEpisode = {
 
 const SUBS_KEY = "@pp:subscriptions";
 const DLS_KEY = "@pp:downloads";
+const PLAYED_KEY = "@pp:played";
 
 type LibraryContextValue = {
   subscriptions: SubscribedPodcast[];
   downloads: DownloadedEpisode[];
+  playedIds: string[];
   subscribe: (p: SubscribedPodcast) => Promise<void>;
   unsubscribe: (collectionId: number) => Promise<void>;
   isSubscribed: (collectionId: number) => boolean;
@@ -36,6 +38,9 @@ type LibraryContextValue = {
   removeDownload: (id: string) => Promise<void>;
   getDownload: (id: string) => DownloadedEpisode | undefined;
   reorderDownloads: (next: DownloadedEpisode[]) => Promise<void>;
+  markPlayed: (id: string) => Promise<void>;
+  unmarkPlayed: (id: string) => Promise<void>;
+  isPlayed: (id: string) => boolean;
   loading: boolean;
 };
 
@@ -44,19 +49,22 @@ const Ctx = createContext<LibraryContextValue | null>(null);
 export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [subscriptions, setSubs] = useState<SubscribedPodcast[]>([]);
   const [downloads, setDownloads] = useState<DownloadedEpisode[]>([]);
+  const [playedIds, setPlayedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Refs mirror latest committed state so concurrent async writers can't
   // clobber each other with stale arrays (e.g. simultaneous downloads).
   const subsRef = useRef<SubscribedPodcast[]>([]);
   const dlsRef = useRef<DownloadedEpisode[]>([]);
+  const playedRef = useRef<string[]>([]);
 
   useEffect(() => {
     (async () => {
       try {
-        const [s, d] = await Promise.all([
+        const [s, d, p] = await Promise.all([
           AsyncStorage.getItem(SUBS_KEY),
           AsyncStorage.getItem(DLS_KEY),
+          AsyncStorage.getItem(PLAYED_KEY),
         ]);
         if (s) {
           const parsed = JSON.parse(s);
@@ -67,6 +75,13 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const parsed = JSON.parse(d);
           dlsRef.current = parsed;
           setDownloads(parsed);
+        }
+        if (p) {
+          const parsed = JSON.parse(p);
+          if (Array.isArray(parsed)) {
+            playedRef.current = parsed;
+            setPlayedIds(parsed);
+          }
         }
       } catch (e) {
         console.warn("library load", e);
@@ -120,10 +135,36 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await persistDls(next);
   }, [persistDls]);
 
+  const persistPlayed = useCallback(async (next: string[]) => {
+    playedRef.current = next;
+    setPlayedIds(next);
+    await AsyncStorage.setItem(PLAYED_KEY, JSON.stringify(next));
+  }, []);
+
+  const markPlayed = useCallback(async (id: string) => {
+    if (playedRef.current.includes(id)) return;
+    // Cap the list at 1000 entries so it doesn't grow forever.
+    const next = [id, ...playedRef.current].slice(0, 1000);
+    await persistPlayed(next);
+  }, [persistPlayed]);
+
+  const unmarkPlayed = useCallback(async (id: string) => {
+    if (!playedRef.current.includes(id)) return;
+    await persistPlayed(playedRef.current.filter((x) => x !== id));
+  }, [persistPlayed]);
+
+  const isPlayed = useCallback(
+    (id: string) => playedIds.includes(id),
+    [playedIds]
+  );
+
   const value = useMemo(() => ({
-    subscriptions, downloads, subscribe, unsubscribe, isSubscribed,
-    addDownload, removeDownload, getDownload, reorderDownloads, loading,
-  }), [subscriptions, downloads, subscribe, unsubscribe, isSubscribed, addDownload, removeDownload, getDownload, reorderDownloads, loading]);
+    subscriptions, downloads, playedIds, subscribe, unsubscribe, isSubscribed,
+    addDownload, removeDownload, getDownload, reorderDownloads,
+    markPlayed, unmarkPlayed, isPlayed, loading,
+  }), [subscriptions, downloads, playedIds, subscribe, unsubscribe, isSubscribed,
+      addDownload, removeDownload, getDownload, reorderDownloads,
+      markPlayed, unmarkPlayed, isPlayed, loading]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };

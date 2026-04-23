@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLibrary } from "./LibraryContext";
 
 export type Episode = {
   id: string;
@@ -35,6 +36,7 @@ type PlayerContextValue = PlayerState & {
   setRate: (rate: number) => Promise<void>;
   stop: () => Promise<void>;
   setSleepTimer: (minutes: number) => void;
+  setQueue: (episodes: Episode[]) => void;
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -42,7 +44,11 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 const PROGRESS_KEY = "@pp:lastPlayed";
 
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { markPlayed } = useLibrary();
   const playerRef = useRef<AudioPlayer | null>(null);
+  const queueRef = useRef<Episode[]>([]);
+  const endedRef = useRef<string | null>(null); // episode id that has already fired "ended"
+  const currentEpisodeRef = useRef<Episode | null>(null);
   const [state, setState] = useState<PlayerState>({
     currentEpisode: null,
     isPlaying: false,
@@ -55,6 +61,10 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     sleepTimerRemainingSec: null,
   });
 
+  const setQueue = useCallback((episodes: Episode[]) => {
+    queueRef.current = episodes;
+  }, []);
+
   useEffect(() => {
     setAudioModeAsync({
       playsInSilentMode: true,
@@ -64,25 +74,61 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }).catch(() => {});
   }, []);
 
-  // Polling for progress
+  // Keep a ref to the latest currentEpisode so the poll effect can read it
+  // without re-subscribing on every state change.
+  useEffect(() => {
+    currentEpisodeRef.current = state.currentEpisode;
+  }, [state.currentEpisode]);
+
+  // Polling for progress + end-of-track detection (auto-advance to next in queue).
   useEffect(() => {
     const interval = setInterval(() => {
       const p = playerRef.current;
       if (!p) return;
       try {
-        const status = p;
+        const pos = p.currentTime || 0;
+        const dur = p.duration || 0;
         setState((s) => ({
           ...s,
-          position: status.currentTime || 0,
-          duration: status.duration || s.duration,
-          isPlaying: status.playing || false,
+          position: pos,
+          duration: dur || s.duration,
+          isPlaying: p.playing || false,
         }));
+
+        // Detect end-of-track: within 0.4s of duration AND duration is known AND
+        // not fired yet for this episode.
+        const cur = currentEpisodeRef.current;
+        if (cur && dur > 0 && pos >= dur - 0.4 && endedRef.current !== cur.id) {
+          endedRef.current = cur.id;
+          handleEpisodeEnded(cur);
+        }
       } catch {
         // ignore
       }
     }, 500);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fires when the current episode reaches the end. Marks it played, and if it
+  // was part of a queue (playlist), auto-advances to the next one.
+  const handleEpisodeEnded = useCallback((ended: Episode) => {
+    // Mark as played (fire-and-forget)
+    markPlayed(ended.id).catch(() => {});
+
+    const queue = queueRef.current;
+    if (!queue || queue.length === 0) return;
+    const idx = queue.findIndex((q) => q.id === ended.id);
+    if (idx < 0 || idx >= queue.length - 1) return; // not in queue, or last track
+    const next = queue[idx + 1];
+    // Defer to next tick so state updates settle
+    setTimeout(() => {
+      playRef.current?.(next);
+    }, 50);
+  }, [markPlayed]);
+
+  // Ref so handleEpisodeEnded can call the latest `play` fn without circular deps.
+  const playRef = useRef<((ep: Episode) => Promise<void>) | null>(null);
 
   const saveProgress = useCallback(async (ep: Episode, position: number) => {
     try {
@@ -99,6 +145,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       try { prev.pause(); } catch {}
       try { prev.remove(); } catch {}
     }
+    // Reset the end-of-track debounce so the new track can trigger "ended".
+    endedRef.current = null;
     setState((s) => ({
       ...s,
       loading: true,
@@ -118,6 +166,11 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setState((s) => ({ ...s, loading: false, isPlaying: false }));
     }
   }, [saveProgress]);
+
+  // Keep playRef up to date so handleEpisodeEnded can call it without deps.
+  useEffect(() => {
+    playRef.current = play;
+  }, [play]);
 
   const toggle = useCallback(async () => {
     const p = playerRef.current;
@@ -226,8 +279,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const value = useMemo<PlayerContextValue>(() => ({
     ...state,
-    play, toggle, seekTo, skip, setRate, stop, setSleepTimer,
-  }), [state, play, toggle, seekTo, skip, setRate, stop, setSleepTimer]);
+    play, toggle, seekTo, skip, setRate, stop, setSleepTimer, setQueue,
+  }), [state, play, toggle, seekTo, skip, setRate, stop, setSleepTimer, setQueue]);
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 };

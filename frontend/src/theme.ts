@@ -14,6 +14,8 @@ export const colors = {
   success: "#10B981",
   downloadedBg: "#0C2A1F",
   downloadedBorder: "#15513B",
+  playedBg: "#0E1A34",
+  playedBorder: "#1D3466",
   overlay: "rgba(0,0,0,0.55)",
 };
 
