@@ -67,14 +67,6 @@ export default function LibraryTab() {
                 </Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              onPress={() => router.push("/settings")}
-              style={styles.iconBtn}
-              hitSlop={8}
-              testID="library-settings-btn"
-            >
-              <Ionicons name="settings-outline" size={18} color={colors.textPrimary} />
-            </TouchableOpacity>
           </View>
         </View>
         <Text style={styles.sub}>
