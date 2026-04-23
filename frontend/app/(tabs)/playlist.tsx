@@ -23,7 +23,7 @@ import { colors, fallbackArt, radius, spacing, emptyStateMic, formatTime } from 
 
 export default function PlaylistTab() {
   const insets = useSafeAreaInsets();
-  const { downloads, reorderDownloads, removeDownload } = useLibrary();
+  const { downloads, reorderDownloads, removeDownload, isPlayed } = useLibrary();
   const { skipForward, skipBackward } = useSettings();
   const {
     currentEpisode, isPlaying, position, duration, loading, rate,
@@ -100,6 +100,7 @@ export default function PlaylistTab() {
 
   const renderItem = ({ item, drag, isActive, getIndex }: RenderItemParams<DownloadedEpisode>) => {
     const isCurrent = currentEpisode?.id === item.id;
+    const played = isPlayed(item.id);
     const idx = getIndex?.() ?? 0;
     return (
       <ScaleDecorator>
@@ -111,6 +112,7 @@ export default function PlaylistTab() {
           activeOpacity={0.85}
           style={[
             styles.row,
+            played && !isCurrent && styles.rowPlayed,
             isCurrent && styles.rowActive,
             isActive && styles.rowDragging,
           ]}
@@ -297,6 +299,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   rowActive: { borderColor: colors.accent },
+  rowPlayed: {
+    backgroundColor: colors.playedBg,
+    borderColor: colors.playedBorder,
+  },
   rowDragging: { boxShadow: "0px 12px 24px rgba(0,0,0,0.5)" },
   indexText: {
     color: colors.textTertiary,
