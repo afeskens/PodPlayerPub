@@ -40,6 +40,7 @@ export default function LatestTab() {
   const router = useRouter();
   const { subscriptions, addDownload, getDownload } = useLibrary();
   const { play } = usePlayer();
+  const { storagePath } = useSettings();
   const [episodes, setEpisodes] = useState<LatestEp[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
