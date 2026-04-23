@@ -89,12 +89,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const prev = playerRef.current;
     playerRef.current = null;
     if (prev) {
-      try {
-        const anyP = prev as any;
-        if (typeof anyP.setActiveForLockScreen === "function") {
-          anyP.setActiveForLockScreen(false);
-        }
-      } catch {}
       try { prev.pause(); } catch {}
       try { prev.remove(); } catch {}
     }
@@ -109,20 +103,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const p = createAudioPlayer({ uri: episode.audioUrl });
       playerRef.current = p;
-      // Enable lock-screen / Now-Playing controls with metadata (expo-audio SDK 54+)
-      try {
-        const anyP = p as any;
-        if (typeof anyP.setActiveForLockScreen === "function") {
-          anyP.setActiveForLockScreen(true, {
-            title: episode.title,
-            artist: episode.podcastName || "",
-            albumTitle: episode.podcastName || "",
-            artworkUrl: episode.image || episode.podcastArtwork || undefined,
-          });
-        }
-      } catch (e) {
-        console.warn("lock-screen setup failed", e);
-      }
       p.play();
       setState((s) => ({ ...s, isPlaying: true, loading: false }));
       await saveProgress(episode, 0);
@@ -175,14 +155,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const stop = useCallback(async () => {
     const p = playerRef.current;
     if (p) {
-      try {
-        const anyP = p as any;
-        if (typeof anyP.setActiveForLockScreen === "function") {
-          anyP.setActiveForLockScreen(false);
-        } else if (typeof anyP.clearLockScreenControls === "function") {
-          anyP.clearLockScreenControls();
-        }
-      } catch {}
       try { p.pause(); p.remove(); } catch {}
       playerRef.current = null;
     }
