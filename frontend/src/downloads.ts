@@ -22,8 +22,11 @@ export function parseDurationToSec(duration?: string): number {
   return parts[0] || 0;
 }
 
+const SAF_SCHEME = "content://";
+
 export async function downloadEpisode(
   ep: DownloadableEpisode,
+  storagePath: string,
   onProgress?: (pct: number) => void
 ): Promise<DownloadedEpisode | null> {
   if (Platform.OS === "web") {
@@ -39,13 +42,22 @@ export async function downloadEpisode(
   }
   const safeName = ep.id.replace(/[^a-z0-9-_]/gi, "_").slice(0, 60) || `ep_${Date.now()}`;
   const ext = ep.audioUrl.split("?")[0].split(".").pop() || "mp3";
-  const dir = `${FileSystem.documentDirectory}episodes/`;
-  const target = `${dir}${safeName}.${ext}`;
+  const fileName = `${safeName}.${ext}`;
+
+  // SAF (Android picked folder) path -> download to cache first, then copy in via SAF APIs
+  const usingSAF = storagePath.startsWith(SAF_SCHEME);
+  const dir = usingSAF ? `${FileSystem.cacheDirectory}episodes/` : storagePath;
+  const tempTarget = `${dir}${fileName}`;
+
   try {
-    await FileSystem.makeDirectoryAsync(dir, { intermediates: true }).catch(() => {});
+    if (!usingSAF) {
+      try { await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+    } else {
+      try { await FileSystem.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+    }
     const task = FileSystem.createDownloadResumable(
       ep.audioUrl,
-      target,
+      tempTarget,
       {},
       (p) => {
         const pct = p.totalBytesExpectedToWrite
@@ -56,11 +68,33 @@ export async function downloadEpisode(
     );
     const res = await task.downloadAsync();
     if (!res) throw new Error("Download returned no result");
+
+    let finalUri = res.uri;
+    if (usingSAF && Platform.OS === "android") {
+      // Move the file into the user-picked SAF directory.
+      try {
+        // @ts-ignore — Android only
+        const SAF = (FileSystem as any).StorageAccessFramework;
+        const content = await FileSystem.readAsStringAsync(res.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const newUri = await SAF.createFileAsync(storagePath, fileName, "audio/mpeg");
+        await SAF.writeAsStringAsync(newUri, content, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        try { await FileSystem.deleteAsync(res.uri, { idempotent: true }); } catch {}
+        finalUri = newUri;
+      } catch (e) {
+        // Fallback: keep the cache copy.
+        console.warn("SAF move failed, keeping cache copy", e);
+      }
+    }
+
     return {
       id: ep.id,
       title: ep.title,
       audioUrl: ep.audioUrl,
-      localUri: res.uri,
+      localUri: finalUri,
       image: ep.image,
       podcastName: ep.podcastName,
       podcastId: ep.podcastId,

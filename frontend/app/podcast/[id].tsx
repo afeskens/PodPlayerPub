@@ -18,6 +18,8 @@ import * as FileSystem from "expo-file-system/legacy";
 import { fetchFeed, Feed, FeedEpisode } from "../../src/api";
 import { useLibrary } from "../../src/context/LibraryContext";
 import { usePlayer } from "../../src/context/PlayerContext";
+import { useSettings } from "../../src/context/SettingsContext";
+import { downloadEpisode as runDownload } from "../../src/downloads";
 import { colors, fallbackArt, radius, spacing, parseDurationToSec, formatTime, relativeDate } from "../../src/theme";
 
 export default function PodcastDetail() {
@@ -33,6 +35,7 @@ export default function PodcastDetail() {
 
   const { isSubscribed, subscribe, unsubscribe, addDownload, getDownload, removeDownload } = useLibrary();
   const { play } = usePlayer();
+  const { storagePath } = useSettings();
 
   const collectionId = Number(params.id);
   const subscribed = isSubscribed(collectionId);
@@ -86,59 +89,32 @@ export default function PodcastDetail() {
   }, [play, router, getDownload, params, feed, collectionId]);
 
   const downloadEpisode = useCallback(async (ep: FeedEpisode) => {
-    if (Platform.OS === "web") {
-      Alert.alert("Downloads unavailable", "Offline downloads are not supported on web preview. Try a device or Expo Go.");
-      return;
-    }
-    if (!ep.audioUrl) {
-      Alert.alert("No audio", "This episode does not have a direct audio URL.");
-      return;
-    }
     const existing = getDownload(ep.id);
     if (existing) {
       Alert.alert("Already downloaded");
       return;
     }
-    try {
-      const safeName = ep.id.replace(/[^a-z0-9-_]/gi, "_").slice(0, 60) || `ep_${Date.now()}`;
-      const ext = ep.audioUrl.split("?")[0].split(".").pop() || "mp3";
-      const target = `${FileSystem.documentDirectory}episodes/${safeName}.${ext}`;
-      await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}episodes`, { intermediates: true }).catch(() => {});
-      setDownloadingIds((s) => ({ ...s, [ep.id]: 0 }));
-      const task = FileSystem.createDownloadResumable(
-        ep.audioUrl,
-        target,
-        {},
-        (p) => {
-          const pct = p.totalBytesExpectedToWrite
-            ? p.totalBytesWritten / p.totalBytesExpectedToWrite
-            : 0;
-          setDownloadingIds((s) => ({ ...s, [ep.id]: pct }));
-        }
-      );
-      const res = await task.downloadAsync();
-      if (!res) throw new Error("Download returned no result");
-      await addDownload({
+    setDownloadingIds((s) => ({ ...s, [ep.id]: 0 }));
+    const saved = await runDownload(
+      {
         id: ep.id,
         title: ep.title,
         audioUrl: ep.audioUrl,
-        localUri: res.uri,
+        duration: ep.duration,
         image: ep.image || String(params.art || ""),
-        podcastName: String(params.name || feed?.title || ""),
         podcastId: collectionId,
-        durationSec: parseDurationToSec(ep.duration),
-        addedAt: Date.now(),
-      });
-    } catch (e: any) {
-      Alert.alert("Download failed", e?.message || "Unknown error");
-    } finally {
-      setDownloadingIds((s) => {
-        const n = { ...s };
-        delete n[ep.id];
-        return n;
-      });
-    }
-  }, [addDownload, getDownload, params, feed, collectionId]);
+        podcastName: String(params.name || feed?.title || ""),
+      },
+      storagePath,
+      (pct) => setDownloadingIds((s) => ({ ...s, [ep.id]: pct }))
+    );
+    if (saved) await addDownload(saved);
+    setDownloadingIds((s) => {
+      const n = { ...s };
+      delete n[ep.id];
+      return n;
+    });
+  }, [addDownload, getDownload, params, feed, collectionId, storagePath]);
 
   const deleteDownload = useCallback(async (ep: FeedEpisode) => {
     const dl = getDownload(ep.id);

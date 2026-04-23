@@ -52,6 +52,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setAudioModeAsync({
       playsInSilentMode: true,
       shouldPlayInBackground: true,
+      shouldRouteThroughEarpiece: false,
       interruptionMode: "doNotMix",
     }).catch(() => {});
   }, []);
@@ -102,6 +103,17 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       const p = createAudioPlayer({ uri: episode.audioUrl });
       playerRef.current = p;
+      // Best-effort lock-screen metadata (iOS MPNowPlayingInfoCenter / Android MediaSession)
+      try {
+        const anyP = p as any;
+        if (typeof anyP.setPlaybackInfo === "function") {
+          anyP.setPlaybackInfo({
+            title: episode.title,
+            artist: episode.podcastName || "",
+            artworkUri: episode.image || episode.podcastArtwork || undefined,
+          });
+        }
+      } catch {}
       p.play();
       setState((s) => ({ ...s, isPlaying: true, loading: false }));
       await saveProgress(episode, 0);

@@ -1,31 +1,32 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
-
-export type StorageLocation = "internal" | "sdcard";
+import * as FileSystem from "expo-file-system/legacy";
 
 type SettingsState = {
   skipForward: number;
   skipBackward: number;
-  storage: StorageLocation;
+  storagePath: string;
+  storageLabel: string;
   loading: boolean;
 };
 
 type SettingsContextValue = SettingsState & {
   setSkipForward: (n: number) => Promise<void>;
   setSkipBackward: (n: number) => Promise<void>;
-  setStorage: (s: StorageLocation) => Promise<void>;
-  sdCardSupported: boolean;
+  setStorage: (path: string, label: string) => Promise<void>;
 };
 
 const Ctx = createContext<SettingsContextValue | null>(null);
 
 const KEY = "@pp:settings";
 
+const defaultStoragePath = `${FileSystem.documentDirectory || ""}episodes/`;
+
 const DEFAULTS: Omit<SettingsState, "loading"> = {
   skipForward: 5,
   skipBackward: 5,
-  storage: "internal",
+  storagePath: defaultStoragePath,
+  storageLabel: "App Documents",
 };
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -37,7 +38,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const raw = await AsyncStorage.getItem(KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
-          setState({ ...DEFAULTS, ...parsed, loading: false });
+          setState({
+            ...DEFAULTS,
+            ...parsed,
+            // migrate legacy { storage: "internal"|"sdcard" } to storagePath
+            storagePath: parsed.storagePath || DEFAULTS.storagePath,
+            storageLabel: parsed.storageLabel || DEFAULTS.storageLabel,
+            loading: false,
+          });
         } else {
           setState((s) => ({ ...s, loading: false }));
         }
@@ -55,7 +63,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         JSON.stringify({
           skipForward: next.skipForward,
           skipBackward: next.skipBackward,
-          storage: next.storage,
+          storagePath: next.storagePath,
+          storageLabel: next.storageLabel,
         })
       ).catch(() => {});
       return next;
@@ -67,8 +76,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...state,
       setSkipForward: async (n) => persist({ skipForward: n }),
       setSkipBackward: async (n) => persist({ skipBackward: n }),
-      setStorage: async (s) => persist({ storage: s }),
-      sdCardSupported: Platform.OS === "android",
+      setStorage: async (path, label) => persist({ storagePath: path, storageLabel: label }),
     }),
     [state, persist]
   );

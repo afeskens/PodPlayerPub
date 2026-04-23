@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchFeed } from "../../src/api";
 import { useLibrary } from "../../src/context/LibraryContext";
 import { usePlayer } from "../../src/context/PlayerContext";
+import { useSettings } from "../../src/context/SettingsContext";
 import { downloadEpisode } from "../../src/downloads";
 import { colors, fallbackArt, radius, spacing, emptyStateMic, formatTime, parseDurationToSec, relativeDate } from "../../src/theme";
 
@@ -123,6 +124,7 @@ export default function LatestTab() {
         podcastId: e.podcastId,
         podcastName: e.podcastName,
       },
+      storagePath,
       (pct) => setDownloading((s) => ({ ...s, [e.id]: pct }))
     );
     if (saved) await addDownload(saved);

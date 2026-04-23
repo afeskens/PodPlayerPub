@@ -59,6 +59,7 @@ export default function RootLayout() {
                   />
                   <Stack.Screen name="podcast/[id]" options={{ animation: "slide_from_right" }} />
                   <Stack.Screen name="settings" options={{ animation: "slide_from_right" }} />
+                <Stack.Screen name="settings/storage" options={{ animation: "slide_from_right" }} />
                 </Stack>
                 <GlobalMiniPlayer />
               </GlobalErrorGuard>
