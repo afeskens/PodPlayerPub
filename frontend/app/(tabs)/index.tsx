@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 6,
   },
-  h1: { color: colors.textPrimary, fontSize: 34, fontWeight: "800", letterSpacing: -0.5 },
+  h1: { color: colors.textPrimary, fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
   eyebrow: { color: colors.accent, fontSize: 11, letterSpacing: 2, fontWeight: "700", marginBottom: 6 },
-  h1: { color: colors.textPrimary, fontSize: 34, fontWeight: "800", letterSpacing: -0.5 },
+  h1: { color: colors.textPrimary, fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
   sub: { color: colors.textSecondary, fontSize: 13, marginTop: 6 },
   empty: {
     alignItems: "center",

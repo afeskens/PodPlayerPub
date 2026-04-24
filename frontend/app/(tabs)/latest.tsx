@@ -190,9 +190,6 @@ export default function LatestTab() {
           data={episodes}
           keyExtractor={(e) => e.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 160 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
-          }
           renderItem={({ item }) => {
             const isDl = !!getDownload(item.id);
             const played = isPlayed(item.id);
@@ -279,7 +276,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  h1: { color: colors.textPrimary, fontSize: 34, fontWeight: "800", letterSpacing: -0.5 },
+  h1: { color: colors.textPrimary, fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
   sub: { color: colors.textSecondary, fontSize: 13, marginTop: 6 },
   refreshBtn: {
     width: 42,

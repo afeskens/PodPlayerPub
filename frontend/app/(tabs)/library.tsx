@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  h1: { color: colors.textPrimary, fontSize: 34, fontWeight: "800", letterSpacing: -0.5 },
+  h1: { color: colors.textPrimary, fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
   sub: { color: colors.textSecondary, fontSize: 13, marginTop: 6 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconBtn: {
