@@ -130,6 +130,14 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // Ref so handleEpisodeEnded can call the latest `play` fn without circular deps.
   const playRef = useRef<((ep: Episode) => Promise<void>) | null>(null);
 
+  // Ref holding the most-current `handleEpisodeEnded` so the native event
+  // listener (registered once per track in `play`) always invokes the latest
+  // closure — e.g. picks up the most recent `playedIds` set.
+  const handleEndedRef = useRef(handleEpisodeEnded);
+  useEffect(() => {
+    handleEndedRef.current = handleEpisodeEnded;
+  }, [handleEpisodeEnded]);
+
   const saveProgress = useCallback(async (ep: Episode, position: number) => {
     try {
       await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify({ episode: ep, position }));
@@ -174,7 +182,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }));
             if (status.didJustFinish && endedRef.current !== episode.id) {
               endedRef.current = episode.id;
-              handleEpisodeEnded(episode);
+              handleEndedRef.current?.(episode);
             }
           }
         });
@@ -191,7 +199,7 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.warn("play error", e);
       setState((s) => ({ ...s, loading: false, isPlaying: false }));
     }
-  }, [saveProgress, handleEpisodeEnded]);
+  }, [saveProgress]);
 
   // Keep playRef up to date so handleEpisodeEnded can call it without deps.
   useEffect(() => {
