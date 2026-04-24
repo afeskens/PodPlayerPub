@@ -1,4 +1,5 @@
 import { Stack, usePathname } from "expo-router";
+import TrackPlayer from "react-native-track-player";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,6 +10,11 @@ import { SettingsProvider } from "../src/context/SettingsContext";
 import { colors } from "../src/theme";
 import MiniPlayer from "../src/components/MiniPlayer";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
+
+// Register the RNTP playback service once at module scope so the native
+// service can be started whenever needed (required for background playback
+// + lock-screen / notification controls).
+TrackPlayer.registerPlaybackService(() => require("../service"));
 
 function GlobalMiniPlayer() {
   const pathname = usePathname();
