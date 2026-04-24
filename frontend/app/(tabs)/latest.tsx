@@ -144,7 +144,6 @@ export default function LatestTab() {
       <View style={styles.header}>
         <Text style={styles.eyebrow}>YOUR FEED</Text>
         <View style={styles.headerRow}>
-          <Text style={styles.h1}>Latest</Text>
           <TouchableOpacity
             style={styles.refreshBtn}
             onPress={onRefresh}

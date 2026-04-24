@@ -76,7 +76,6 @@ export default function SearchTab() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.headerWrap}>
         <Text style={styles.eyebrow}>DISCOVER</Text>
-        <Text style={styles.h1}>Search</Text>
 
         <View style={styles.searchRow}>
           <Ionicons name="search" size={18} color={colors.textSecondary} style={{ marginLeft: 4 }} />

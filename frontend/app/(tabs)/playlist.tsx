@@ -166,7 +166,6 @@ export default function PlaylistTab() {
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: 58 + insets.bottom }]}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>OFFLINE QUEUE</Text>
-        <Text style={styles.h1}>Playlist</Text>
         <Text style={styles.sub}>
           {downloads.length === 0
             ? "Long-press an episode in Latest to add it here"

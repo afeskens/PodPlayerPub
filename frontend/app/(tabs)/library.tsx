@@ -53,7 +53,6 @@ export default function LibraryTab() {
       <View style={styles.header}>
         <Text style={styles.eyebrow}>YOUR SUBSCRIPTIONS</Text>
         <View style={styles.headerRow}>
-          <Text style={styles.h1}>Library</Text>
           <View style={styles.headerActions}>
             {subscriptions.length > 0 && (
               <TouchableOpacity
