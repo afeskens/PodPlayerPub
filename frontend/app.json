@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "podcastplayer",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.podcastplayer.app",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.podcastplayer.app",
-      "versionCode": 12,
+      "versionCode": 13,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -45,8 +45,7 @@
           "backgroundColor": "#000000"
         }
       ],
-      "expo-asset",
-      "expo-audio"
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

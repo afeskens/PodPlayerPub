@@ -15,7 +15,7 @@ import DraggableFlatList, {
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
 import Slider from "@react-native-community/slider";
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 import { useLibrary, DownloadedEpisode } from "../../src/context/LibraryContext";
 import { usePlayer } from "../../src/context/PlayerContext";
 import { useSettings } from "../../src/context/SettingsContext";

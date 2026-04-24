@@ -53,6 +53,14 @@ That's it. No need to re-run `eas init` or `eas login`.
 - If you want a smaller APK per CPU architecture, edit `eas.json` and add `"buildType": "apk"` + let EAS split per ABI.
 - The backend folder in this repo is no longer required for the APK. You can delete `/backend` if you want — it was only used during development.
 
+## What's new in v13 (SDK 53 + react-native-track-player)
+
+- **Bluetooth headphone buttons** (Play/Pause, Next/Previous, Skip forward/back 15-30s)
+- **Android lock-screen media controls** with album art, scrub bar, skip buttons
+- **Notification-shade player** — full media session with artwork
+- **Auto-pause on audio interruptions** (calls, other apps)
+- **Expo Go no longer works for playback** — you MUST install the EAS-built APK to test audio. The web preview still loads the UI but audio won't play.
+
 ## Troubleshooting
 
 - **"Experience with id ... does not exist"** — you skipped `eas init`. Run it.

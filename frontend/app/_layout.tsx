@@ -22,7 +22,7 @@ function GlobalMiniPlayer() {
     pathname === "/library";
   const bottomOffset = inTabs ? 58 + insets.bottom : insets.bottom;
   return (
-    <View style={[styles.miniWrap, { bottom: bottomOffset, pointerEvents: "box-none" }]}>
+    <View pointerEvents="box-none" style={[styles.miniWrap, { bottom: bottomOffset }]}>
       <MiniPlayer />
     </View>
   );
