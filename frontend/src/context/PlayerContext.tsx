@@ -44,7 +44,7 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 const PROGRESS_KEY = "@pp:lastPlayed";
 
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { markPlayed } = useLibrary();
+  const { markPlayed, isPlayed } = useLibrary();
   const playerRef = useRef<AudioPlayer | null>(null);
   const queueRef = useRef<Episode[]>([]);
   const endedRef = useRef<string | null>(null); // episode id that has already fired "ended"
@@ -103,7 +103,8 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   // Fires when the current episode reaches the end. Marks it played, and if it
-  // was part of a queue (playlist), auto-advances to the next one.
+  // was part of a queue (playlist), auto-advances to the next UNPLAYED one —
+  // skipping over any episodes the user has already marked as played.
   const handleEpisodeEnded = useCallback((ended: Episode) => {
     // Mark as played (fire-and-forget)
     markPlayed(ended.id).catch(() => {});
@@ -111,13 +112,20 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const queue = queueRef.current;
     if (!queue || queue.length === 0) return;
     const idx = queue.findIndex((q) => q.id === ended.id);
-    if (idx < 0 || idx >= queue.length - 1) return; // not in queue, or last track
-    const next = queue[idx + 1];
-    // Defer to next tick so state updates settle
-    setTimeout(() => {
-      playRef.current?.(next);
-    }, 50);
-  }, [markPlayed]);
+    if (idx < 0) return;
+
+    // Find the next queue item that isn't already played.
+    for (let i = idx + 1; i < queue.length; i++) {
+      const candidate = queue[i];
+      if (!isPlayed(candidate.id)) {
+        setTimeout(() => {
+          playRef.current?.(candidate);
+        }, 50);
+        return;
+      }
+    }
+    // No unplayed episodes remain in the queue — stop.
+  }, [markPlayed, isPlayed]);
 
   // Ref so handleEpisodeEnded can call the latest `play` fn without circular deps.
   const playRef = useRef<((ep: Episode) => Promise<void>) | null>(null);
