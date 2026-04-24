@@ -1,14 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from "expo-audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import TrackPlayer, {
-  Event,
-  State,
-  Capability,
-  AppKilledPlaybackBehavior,
-  RepeatMode,
-  useProgress,
-  useTrackPlayerEvents,
-} from "react-native-track-player";
 import { useLibrary } from "./LibraryContext";
 
 export type Episode = {
@@ -31,8 +23,8 @@ type PlayerState = {
   duration: number; // seconds
   rate: number;
   loading: boolean;
-  sleepTimerMinutes: number; // 0 = off
-  sleepTimerEndsAt: number | null; // epoch ms, null = off
+  sleepTimerMinutes: number;
+  sleepTimerEndsAt: number | null;
   sleepTimerRemainingSec: number | null;
 };
 
@@ -51,63 +43,12 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 
 const PROGRESS_KEY = "@pp:lastPlayed";
 
-// One-time TrackPlayer setup. Safe to call multiple times — errors after the
-// first call are swallowed because the library only allows a single setup.
-let setupPromise: Promise<void> | null = null;
-async function ensureSetup() {
-  if (setupPromise) return setupPromise;
-  setupPromise = (async () => {
-    try {
-      await TrackPlayer.setupPlayer({
-        autoHandleInterruptions: true,
-      });
-    } catch (e) {
-      // setupPlayer throws if already set up — that's fine.
-    }
-    try {
-      await TrackPlayer.updateOptions({
-        android: {
-          appKilledPlaybackBehavior: AppKilledPlaybackBehavior.StopPlaybackAndRemoveNotification,
-        },
-        capabilities: [
-          Capability.Play,
-          Capability.Pause,
-          Capability.Stop,
-          Capability.SeekTo,
-          Capability.JumpForward,
-          Capability.JumpBackward,
-        ],
-        compactCapabilities: [
-          Capability.Play,
-          Capability.Pause,
-          Capability.JumpForward,
-          Capability.JumpBackward,
-        ],
-        notificationCapabilities: [
-          Capability.Play,
-          Capability.Pause,
-          Capability.Stop,
-          Capability.SeekTo,
-          Capability.JumpForward,
-          Capability.JumpBackward,
-        ],
-        forwardJumpInterval: 30,
-        backwardJumpInterval: 10,
-        progressUpdateEventInterval: 1,
-      });
-    } catch (e) {
-      // ignore
-    }
-  })();
-  return setupPromise;
-}
-
 export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { markPlayed, isPlayed } = useLibrary();
+  const playerRef = useRef<AudioPlayer | null>(null);
   const queueRef = useRef<Episode[]>([]);
   const endedRef = useRef<string | null>(null);
   const currentEpisodeRef = useRef<Episode | null>(null);
-
   const [state, setState] = useState<PlayerState>({
     currentEpisode: null,
     isPlaying: false,
@@ -124,19 +65,40 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     queueRef.current = episodes;
   }, []);
 
-  // One-time setup on mount.
   useEffect(() => {
-    ensureSetup().catch(() => {});
-    return () => {
-      // do NOT reset the player on unmount of a provider instance — we want
-      // the background service to keep running even when the UI is gone.
-    };
+    // Keep audio playing when screen is off / app is backgrounded. No lock
+    // screen controls with expo-audio — but playback continues in the
+    // background thanks to UIBackgroundModes=audio in app.json.
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      allowsRecording: false,
+      interruptionMode: "mixWithOthers",
+    }).catch((e) => console.warn("audio mode", e));
   }, []);
 
-  // Keep a ref to the latest currentEpisode so listeners don't go stale.
   useEffect(() => {
     currentEpisodeRef.current = state.currentEpisode;
   }, [state.currentEpisode]);
+
+  // Polling for progress only. End-of-track uses the native event below.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const p = playerRef.current;
+      if (!p) return;
+      try {
+        const pos = p.currentTime || 0;
+        const dur = p.duration || 0;
+        setState((s) => ({
+          ...s,
+          position: pos,
+          duration: dur || s.duration,
+          isPlaying: p.playing || false,
+        }));
+      } catch {}
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
 
   const saveProgress = useCallback(async (ep: Episode, position: number) => {
     try {
@@ -144,8 +106,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     } catch {}
   }, []);
 
-  // Fires when the current track reaches the end. Marks it played, then
-  // advances to the next UNPLAYED item in the queue.
   const handleEpisodeEnded = useCallback((ended: Episode) => {
     markPlayed(ended.id).catch(() => {});
     const queue = queueRef.current;
@@ -168,7 +128,12 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [handleEpisodeEnded]);
 
   const play = useCallback(async (episode: Episode) => {
-    await ensureSetup();
+    const prev = playerRef.current;
+    playerRef.current = null;
+    if (prev) {
+      try { prev.pause(); } catch {}
+      try { prev.remove(); } catch {}
+    }
     endedRef.current = null;
     setState((s) => ({
       ...s,
@@ -179,16 +144,30 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       duration: 0,
     }));
     try {
-      await TrackPlayer.reset();
-      await TrackPlayer.add({
-        id: episode.id,
-        url: episode.audioUrl,
-        title: episode.title || "Episode",
-        artist: episode.podcastName || "",
-        artwork: episode.image || episode.podcastArtwork,
-        duration: parseInt(episode.duration || "0", 10) || undefined,
-      });
-      await TrackPlayer.play();
+      const p = createAudioPlayer({ uri: episode.audioUrl });
+      playerRef.current = p;
+
+      try {
+        const sub = (p as any).addListener("playbackStatusUpdate", (status: any) => {
+          if (status) {
+            setState((s) => ({
+              ...s,
+              position: typeof status.currentTime === "number" ? status.currentTime : s.position,
+              duration: typeof status.duration === "number" && status.duration > 0 ? status.duration : s.duration,
+              isPlaying: !!status.playing,
+            }));
+            if (status.didJustFinish && endedRef.current !== episode.id) {
+              endedRef.current = episode.id;
+              handleEndedRef.current?.(episode);
+            }
+          }
+        });
+        (p as any).__sub = sub;
+      } catch (e) {
+        console.warn("addListener failed", e);
+      }
+
+      p.play();
       setState((s) => ({ ...s, isPlaying: true, loading: false }));
       await saveProgress(episode, 0);
     } catch (e) {
@@ -202,37 +181,48 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [play]);
 
   const toggle = useCallback(async () => {
+    const p = playerRef.current;
+    if (!p) return;
     try {
-      const playing = state.isPlaying;
-      if (playing) await TrackPlayer.pause();
-      else await TrackPlayer.play();
-      setState((s) => ({ ...s, isPlaying: !playing }));
+      if (p.playing) p.pause();
+      else p.play();
+      setState((s) => ({ ...s, isPlaying: !s.isPlaying }));
     } catch (e) {
       console.warn("toggle", e);
     }
-  }, [state.isPlaying]);
+  }, []);
 
   const seekTo = useCallback(async (seconds: number) => {
-    try { await TrackPlayer.seekTo(seconds); } catch {}
+    const p = playerRef.current;
+    if (!p) return;
+    try { await p.seekTo(seconds); } catch {}
     setState((s) => ({ ...s, position: seconds }));
   }, []);
 
   const skip = useCallback(async (deltaSeconds: number) => {
+    const p = playerRef.current;
+    if (!p) return;
     try {
-      const pos = await TrackPlayer.getPosition();
-      const next = Math.max(0, pos + deltaSeconds);
-      await TrackPlayer.seekTo(next);
+      const cur = p.currentTime || 0;
+      const next = Math.max(0, cur + deltaSeconds);
+      await p.seekTo(next);
       setState((s) => ({ ...s, position: next }));
     } catch {}
   }, []);
 
   const setRate = useCallback(async (rate: number) => {
-    try { await TrackPlayer.setRate(rate); } catch {}
+    const p = playerRef.current;
+    if (!p) return;
+    try { p.setPlaybackRate?.(rate); } catch {}
     setState((s) => ({ ...s, rate }));
   }, []);
 
   const stop = useCallback(async () => {
-    try { await TrackPlayer.reset(); } catch {}
+    const p = playerRef.current;
+    if (p) {
+      try { p.pause(); p.remove(); } catch {}
+      playerRef.current = null;
+    }
     setState({
       currentEpisode: null,
       isPlaying: false,
@@ -259,11 +249,18 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     if (!state.sleepTimerEndsAt) return;
     const endsAt = state.sleepTimerEndsAt;
-    const tick = async () => {
+    const tick = () => {
       const remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
       if (remaining <= 0) {
-        try { await TrackPlayer.pause(); } catch {}
-        setState((s) => ({ ...s, isPlaying: false, sleepTimerMinutes: 0, sleepTimerEndsAt: null, sleepTimerRemainingSec: null }));
+        const p = playerRef.current;
+        if (p) { try { p.pause(); } catch {} }
+        setState((s) => ({
+          ...s,
+          isPlaying: false,
+          sleepTimerMinutes: 0,
+          sleepTimerEndsAt: null,
+          sleepTimerRemainingSec: null,
+        }));
       } else {
         setState((s) => ({ ...s, sleepTimerRemainingSec: remaining }));
       }
@@ -272,54 +269,6 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [state.sleepTimerEndsAt]);
-
-  // Track native playback events — mirror into React state.
-  useTrackPlayerEvents(
-    [
-      Event.PlaybackState,
-      Event.PlaybackActiveTrackChanged,
-      Event.PlaybackQueueEnded,
-      Event.PlaybackError,
-    ],
-    async (event: any) => {
-      try {
-        if (event.type === Event.PlaybackState) {
-          const st = event.state as State;
-          setState((s) => ({
-            ...s,
-            isPlaying: st === State.Playing,
-            loading: st === State.Loading || st === State.Buffering,
-          }));
-        } else if (event.type === Event.PlaybackQueueEnded) {
-          const cur = currentEpisodeRef.current;
-          if (cur && endedRef.current !== cur.id) {
-            endedRef.current = cur.id;
-            handleEndedRef.current?.(cur);
-          }
-        } else if (event.type === Event.PlaybackError) {
-          console.warn("playback error", event);
-          setState((s) => ({ ...s, isPlaying: false, loading: false }));
-        }
-      } catch (e) {
-        console.warn("event handler", e);
-      }
-    }
-  );
-
-  // Poll position / duration every 500ms while mounted.
-  useEffect(() => {
-    const id = setInterval(async () => {
-      try {
-        const [pos, dur] = await Promise.all([TrackPlayer.getPosition(), TrackPlayer.getDuration()]);
-        setState((s) => ({
-          ...s,
-          position: typeof pos === "number" ? pos : s.position,
-          duration: typeof dur === "number" && dur > 0 ? dur : s.duration,
-        }));
-      } catch {}
-    }, 500);
-    return () => clearInterval(id);
-  }, []);
 
   const value = useMemo<PlayerContextValue>(() => ({
     ...state,
