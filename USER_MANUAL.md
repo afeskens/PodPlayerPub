@@ -110,6 +110,19 @@ There are several ways to start an episode:
 
 In the **Playlist** tab, tap the **⊙** circle icon on the right of an episode to toggle its played status. Played episodes appear in **blue** and are auto-skipped during queue playback.
 
+### Searching & filtering
+
+PodPlayer has two separate live-filter search boxes once you have subscriptions:
+
+| Where | What it filters | Use it for |
+|---|---|---|
+| **Library tab** → search bar at top | The names of podcasts you're subscribed to | Quickly jumping to one show in a long list |
+| **Podcast detail screen** → search bar under the *Episodes* heading | All episodes currently loaded for that one podcast (matches **title** *and* **show notes / description**) | Finding "the one about DNS spoofing" in a 1000-episode archive |
+
+Both filters work as you type, are case-insensitive, and update a small counter so you can see how many results matched (e.g. *Episodes (4 / 612)*). Tap the **×** on the right of either bar to clear and see the full list again.
+
+> 💡 The episode-level search only searches episodes already loaded into the feed. PodPlayer fetches up to the most recent ~300 episodes from each feed when you open it, so very old episodes from giant archives may not be searchable until you scroll / reload.
+
 ---
 
 ## 6. The player screen
@@ -320,4 +333,4 @@ The screenshots in this manual were captured from the in-development web preview
 
 ---
 
-*Manual current as of v24. Reply in the development chat if anything looks wrong or you want a new feature documented.*
+*Manual current as of v25 (added in-podcast episode keyword search). Reply in the development chat if anything looks wrong or you want a new feature documented.*
