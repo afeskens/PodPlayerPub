@@ -161,9 +161,63 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const saveProgress = useCallback(async (ep: Episode, position: number) => {
     try {
-      await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify({ id: ep.id, position }));
+      // Persist full episode metadata so we can fully rehydrate on app launch
+      // even if the episode has since been removed from the playlist.
+      await AsyncStorage.setItem(
+        PROGRESS_KEY,
+        JSON.stringify({ episode: ep, position, savedAt: Date.now() })
+      );
     } catch {}
   }, []);
+
+  // Ref holding a saved-position record while we wait for the user to
+  // tap play. When play() loads the matching episode, we seek to this
+  // position before starting playback.
+  const pendingResumeRef = useRef<{ id: string; position: number } | null>(null);
+
+  // ---------- Auto-resume: rehydrate last episode on mount ----------
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(PROGRESS_KEY);
+        if (!raw || cancelled) return;
+        const data = JSON.parse(raw);
+        const ep = data?.episode;
+        const pos = Number(data?.position) || 0;
+        // Only restore if we have a real episode and meaningful progress (>5s)
+        if (ep && ep.id && ep.audioUrl && pos > 5) {
+          pendingResumeRef.current = { id: ep.id, position: pos };
+          setState((s) => ({
+            ...s,
+            currentEpisode: ep,
+            position: pos,
+            duration: 0,
+            isPlaying: false,
+            loading: false,
+          }));
+        }
+      } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // ---------- Periodic progress save while playing ----------
+  // Save every ~10 seconds during active playback, plus on
+  // pause/stop, so reopening the app always lands within ~10s of
+  // where the user actually was.
+  const lastSavedPosRef = useRef<number>(0);
+  useEffect(() => {
+    const ep = state.currentEpisode;
+    if (!ep || !state.isPlaying) return;
+    const pos = state.position;
+    if (pos > 0 && Math.abs(pos - lastSavedPosRef.current) >= 10) {
+      lastSavedPosRef.current = pos;
+      saveProgress(ep, pos);
+    }
+  }, [state.position, state.isPlaying, state.currentEpisode, saveProgress]);
 
   const playRef = useRef<((ep: Episode) => Promise<void>) | null>(null);
 
@@ -171,6 +225,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (endedHandledRef.current === ended.id) return;
     endedHandledRef.current = ended.id;
     markPlayed(ended.id).catch(() => {});
+    // Clear saved resume position for finished episode
+    AsyncStorage.removeItem(PROGRESS_KEY).catch(() => {});
+    lastSavedPosRef.current = 0;
     const queue = queueRef.current;
     if (!queue || queue.length === 0) return;
     const idx = queue.findIndex((q) => q.id === ended.id);
@@ -221,20 +278,32 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const play = useCallback(async (episode: Episode) => {
     endedHandledRef.current = null;
+    // If this episode matches a pending resume record, start at the saved position.
+    const pending = pendingResumeRef.current;
+    const resumeAt =
+      pending && pending.id === episode.id && pending.position > 5
+        ? pending.position
+        : 0;
+    pendingResumeRef.current = null; // consume regardless
+
     setState((s) => ({
       ...s,
       loading: true,
       currentEpisode: episode,
       isPlaying: false,
-      position: 0,
+      position: resumeAt,
       duration: 0,
     }));
     try {
       await ensureTrackPlayerSetup();
       await TrackPlayer.reset();
       await TrackPlayer.add(episodeToTrack(episode));
+      if (resumeAt > 0) {
+        try { await TrackPlayer.seekTo(resumeAt); } catch {}
+      }
       await TrackPlayer.play();
-      await saveProgress(episode, 0);
+      lastSavedPosRef.current = resumeAt;
+      await saveProgress(episode, resumeAt);
     } catch (e) {
       console.warn("play error", e);
       setState((s) => ({ ...s, loading: false, isPlaying: false }));
@@ -245,16 +314,34 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const toggle = useCallback(async () => {
     try {
+      // Auto-resume scenario: app was just opened, MiniPlayer is visible
+      // showing the last episode at the saved position, but the native
+      // RNTP queue is empty. Tap-to-play should load + seek + play.
+      let active: any = null;
+      try { active = await TrackPlayer.getActiveTrack(); } catch {}
+      if (!active && currentEpisodeRef.current) {
+        await play(currentEpisodeRef.current);
+        return;
+      }
       const s = await TrackPlayer.getPlaybackState();
       if (s.state === State.Playing) {
         await TrackPlayer.pause();
+        // Snapshot exact position on pause so resume is precise
+        const ep = currentEpisodeRef.current;
+        if (ep) {
+          try {
+            const { position } = await TrackPlayer.getProgress();
+            await saveProgress(ep, position || 0);
+            lastSavedPosRef.current = position || 0;
+          } catch {}
+        }
       } else {
         await TrackPlayer.play();
       }
     } catch (e) {
       console.warn("toggle", e);
     }
-  }, []);
+  }, [play, saveProgress]);
 
   const seekTo = useCallback(async (seconds: number) => {
     try {
@@ -281,6 +368,9 @@ export const PlayerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const stop = useCallback(async () => {
     try { await TrackPlayer.reset(); } catch {}
+    pendingResumeRef.current = null;
+    lastSavedPosRef.current = 0;
+    try { await AsyncStorage.removeItem(PROGRESS_KEY); } catch {}
     setState({
       currentEpisode: null,
       isPlaying: false,
