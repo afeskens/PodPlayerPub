@@ -2,6 +2,10 @@
 
 A pocket-sized guide to your new podcast player. PodPlayer is a fully offline-capable podcatcher that lets you discover, subscribe, download, and listen to podcasts from multiple directories — without locking you into anyone's ecosystem.
 
+<p align="center">
+  <img src="screenshots/01-search.png" width="300" alt="PodPlayer Search tab">
+</p>
+
 ---
 
 ## Table of contents
@@ -59,6 +63,10 @@ A small **mini-player** appears just above the tab bar whenever an episode is lo
 1. Open the **Search** tab.
 2. Beneath the search box you'll see a row of pills: **Apple / Index / Fyyd / Custom**. Pick the directory you want to query.
 3. Type in the search box and tap **Go** (or wait — it auto-searches as you type).
+
+<p align="center">
+  <img src="screenshots/02-search-results.png" width="280" alt="Search with results">
+</p>
 
 | Directory | Best for |
 |---|---|
@@ -238,6 +246,10 @@ A summary alert tells you how many were added, skipped, and how many failed.
 
 Open with the gear icon at the top-right of any tab.
 
+<p align="center">
+  <img src="screenshots/06-settings.png" width="300" alt="Settings tab — full layout">
+</p>
+
 | Section | What it controls |
 |---|---|
 | **Storage** | Where downloaded episodes are saved. Shows total space used. |
@@ -286,6 +298,25 @@ Catalog data sourced from:
 - [Apple iTunes Podcast Search API](https://podcasts.apple.com)
 - [Podcast Index](https://podcastindex.org) (CC0)
 - [Fyyd](https://fyyd.de)
+
+---
+
+## Updating the screenshots
+
+The screenshots in this manual were captured from the in-development web preview and may not show your latest content (they show empty Latest / Library / Playlist tabs). To replace them with screenshots from your actual phone:
+
+1. Open PodPlayer on your phone, navigate to each screen
+2. Press **Power + Volume Down** to capture
+3. Transfer the PNG files to your computer
+4. Crop to ~390×844 (or any 9:19 ratio) for consistency
+5. Replace the files at `screenshots/` in the repo, keeping the same filenames:
+   - `01-search.png` — Search tab landing
+   - `02-search-results.png` — Search with a query typed
+   - `03-latest.png` — Latest tab with collapsible podcast sections
+   - `04-library.png` — Library with subscriptions
+   - `05-playlist.png` — Playlist with downloaded episodes
+   - `06-settings.png` — Settings (full-page screenshot)
+6. Commit and push — GitHub auto-renders the updated images
 
 ---
 
