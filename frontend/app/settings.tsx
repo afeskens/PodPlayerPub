@@ -234,7 +234,7 @@ export default function SettingsScreen() {
         </Section>
 
         <Section title="About">
-          <InfoRow label="App" value="Podcast Player" />
+          <InfoRow label="App" value="PodPlayer" />
           <InfoRow label="Version" value="1.0.0" />
           <InfoRow label="Platform" value={Platform.OS} />
         </Section>

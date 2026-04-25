@@ -28,7 +28,7 @@ export function buildOpml(subs: SubscribedPodcast[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0">
   <head>
-    <title>Podcast Player subscriptions</title>
+    <title>PodPlayer subscriptions</title>
     <dateCreated>${now}</dateCreated>
   </head>
   <body>

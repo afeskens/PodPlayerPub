@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Podcast Player",
+    "name": "PodPlayer",
     "slug": "podcast-player",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.podcastplayer.app",
-      "versionCode": 17,
+      "versionCode": 18,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#162e06"
