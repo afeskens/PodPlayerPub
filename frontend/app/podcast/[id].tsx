@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -32,6 +33,18 @@ export default function PodcastDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingIds, setDownloadingIds] = useState<Record<string, number>>({});
+  const [epFilter, setEpFilter] = useState("");
+
+  const filteredEpisodes = useMemo(() => {
+    const eps = feed?.episodes || [];
+    const q = epFilter.trim().toLowerCase();
+    if (!q) return eps;
+    return eps.filter((ep) => {
+      const title = (ep.title || "").toLowerCase();
+      const desc = (ep.description || "").toLowerCase();
+      return title.includes(q) || desc.includes(q);
+    });
+  }, [feed, epFilter]);
 
   const { isSubscribed, subscribe, unsubscribe, addDownload, getDownload, removeDownload } = useLibrary();
   const { play } = usePlayer();
@@ -215,9 +228,38 @@ export default function PodcastDetail() {
               </View>
             )}
 
-            <Text style={styles.sectionTitle}>Episodes ({feed.episodes.length})</Text>
+            <Text style={styles.sectionTitle}>
+              Episodes ({epFilter ? `${filteredEpisodes.length}/${feed.episodes.length}` : feed.episodes.length})
+            </Text>
 
-            {feed.episodes.map((ep, idx) => {
+            <View style={styles.epFilterRow}>
+              <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+              <TextInput
+                style={styles.epFilterInput}
+                placeholder="Search episodes by title or notes"
+                placeholderTextColor={colors.textTertiary}
+                value={epFilter}
+                onChangeText={setEpFilter}
+                autoCorrect={false}
+                autoCapitalize="none"
+                testID="episode-filter-input"
+              />
+              {epFilter.length > 0 && (
+                <TouchableOpacity onPress={() => setEpFilter("")} hitSlop={8} testID="episode-filter-clear">
+                  <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {filteredEpisodes.length === 0 && epFilter.length > 0 && (
+              <View style={{ paddingVertical: 24, alignItems: "center" }}>
+                <Text style={{ color: colors.textTertiary, fontSize: 13 }}>
+                  No episodes match "{epFilter}"
+                </Text>
+              </View>
+            )}
+
+            {filteredEpisodes.map((ep, idx) => {
               const dl = getDownload(ep.id);
               const dlProgress = downloadingIds[ep.id];
               const isDownloading = typeof dlProgress === "number";
@@ -371,6 +413,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginTop: spacing.lg,
     marginBottom: spacing.md,
+  },
+  epFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  epFilterInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    paddingVertical: Platform.OS === "ios" ? 8 : 4,
   },
   epCard: {
     marginHorizontal: spacing.lg,
