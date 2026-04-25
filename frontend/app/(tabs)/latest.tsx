@@ -4,10 +4,12 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  SectionList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -46,6 +48,53 @@ export default function LatestTab() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState<Record<string, number>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  // Persist collapsed state per podcast across launches
+  const COLLAPSED_KEY = "@pp:latestCollapsed";
+  useEffect(() => {
+    AsyncStorage.getItem(COLLAPSED_KEY).then((s) => {
+      if (s) {
+        try { setCollapsed(JSON.parse(s) || {}); } catch {}
+      }
+    });
+  }, []);
+  const toggleSection = useCallback((id: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      AsyncStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  // Group episodes by podcast, ordered by the most recent episode in each group
+  const sections = useMemo(() => {
+    const map = new Map<string, { podcastId: number; podcastName: string; podcastArtwork: string; data: LatestEp[]; mostRecent: number }>();
+    for (const ep of episodes) {
+      const key = String(ep.podcastId);
+      const existing = map.get(key);
+      if (existing) {
+        existing.data.push(ep);
+        if (ep.pubTs > existing.mostRecent) existing.mostRecent = ep.pubTs;
+      } else {
+        map.set(key, {
+          podcastId: ep.podcastId,
+          podcastName: ep.podcastName,
+          podcastArtwork: ep.podcastArtwork,
+          data: [ep],
+          mostRecent: ep.pubTs,
+        });
+      }
+    }
+    const groups = Array.from(map.values()).sort((a, b) => b.mostRecent - a.mostRecent);
+    return groups.map((g) => ({
+      title: g.podcastName,
+      key: String(g.podcastId),
+      podcastArtwork: g.podcastArtwork,
+      totalCount: g.data.length,
+      data: collapsed[String(g.podcastId)] ? [] : g.data,
+    }));
+  }, [episodes, collapsed]);
 
   const loadAll = useCallback(async () => {
     if (subscriptions.length === 0) {
@@ -121,6 +170,7 @@ export default function LatestTab() {
       podcastId: e.podcastId,
       podcastName: e.podcastName,
       podcastArtwork: e.podcastArtwork,
+      chaptersUrl: (e as any).chaptersUrl,
     });
     router.push("/player");
   };
@@ -198,10 +248,34 @@ export default function LatestTab() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={episodes}
+        <SectionList
+          sections={sections}
           keyExtractor={(e) => e.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 160 }}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) => {
+            const sec: any = section;
+            const isCollapsed = !!collapsed[sec.key];
+            return (
+              <TouchableOpacity
+                style={styles.sectionHeader}
+                onPress={() => toggleSection(sec.key)}
+                activeOpacity={0.85}
+                testID={`latest-section-${sec.key}`}
+              >
+                <Image source={{ uri: sec.podcastArtwork || fallbackArt }} style={styles.sectionArt} contentFit="cover" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sectionTitle} numberOfLines={1}>{sec.title}</Text>
+                  <Text style={styles.sectionMeta}>{sec.totalCount} {sec.totalCount === 1 ? "episode" : "episodes"}</Text>
+                </View>
+                <Ionicons
+                  name={isCollapsed ? "chevron-down" : "chevron-up"}
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            );
+          }}
           renderItem={({ item }) => {
             const isDl = !!getDownload(item.id);
             const played = isPlayed(item.id);
@@ -298,6 +372,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sectionArt: {
+    width: 38, height: 38, borderRadius: radius.sm,
+    backgroundColor: colors.surfaceSecondary,
+  },
+  sectionTitle: { color: colors.textPrimary, fontSize: 14, fontWeight: "700" },
+  sectionMeta: { color: colors.textTertiary, fontSize: 11, marginTop: 1 },
   center: { alignItems: "center", paddingVertical: 40 },
   empty: {
     alignItems: "center",

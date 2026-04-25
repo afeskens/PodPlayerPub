@@ -95,6 +95,7 @@ export default function PodcastDetail() {
       podcastId: collectionId,
       podcastName: String(params.name || feed?.title || ""),
       podcastArtwork: String(params.art || feed?.image || ""),
+      chaptersUrl: ep.chaptersUrl,
     });
     router.push("/player");
   }, [play, router, getDownload, params, feed, collectionId]);

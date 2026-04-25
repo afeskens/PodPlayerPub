@@ -15,6 +15,7 @@ import Slider from "@react-native-community/slider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePlayer } from "../src/context/PlayerContext";
 import { useSettings } from "../src/context/SettingsContext";
+import { useChapters, activeChapterIndex } from "../src/chapters";
 import { colors, fallbackArt, radius, spacing, formatTime } from "../src/theme";
 
 const RATES = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
@@ -44,6 +45,8 @@ export default function PlayerScreen() {
     setRate,
   } = usePlayer();
   const [seeking, setSeeking] = useState<number | null>(null);
+  const { chapters } = useChapters(currentEpisode?.chaptersUrl);
+  const activeChIdx = activeChapterIndex(chapters, position);
 
   if (!currentEpisode) {
     return (
@@ -173,6 +176,34 @@ export default function PlayerScreen() {
             <Ionicons name="bookmark-outline" size={18} color={colors.textSecondary} />
           </View>
         </View>
+
+        {chapters.length > 0 && (
+          <View style={styles.descBox}>
+            <Text style={styles.descLabel}>CHAPTERS</Text>
+            {chapters.map((c, i) => {
+              const active = i === activeChIdx;
+              return (
+                <TouchableOpacity
+                  key={`${i}-${c.startTime}`}
+                  style={[styles.chapterRow, active && styles.chapterRowActive]}
+                  onPress={() => seekTo(c.startTime)}
+                  activeOpacity={0.7}
+                  testID={`chapter-${i}`}
+                >
+                  <Text style={[styles.chapterTime, active && styles.chapterTimeActive]}>
+                    {formatTime(c.startTime)}
+                  </Text>
+                  <Text
+                    style={[styles.chapterTitle, active && styles.chapterTitleActive]}
+                    numberOfLines={2}
+                  >
+                    {c.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {!!currentEpisode.description && (
           <View style={styles.descBox}>
@@ -317,4 +348,24 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   desc: { color: colors.textSecondary, fontSize: 13, lineHeight: 20 },
+  chapterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  chapterRowActive: { backgroundColor: "rgba(245,165,36,0.10)", borderRadius: radius.sm },
+  chapterTime: {
+    color: colors.textTertiary,
+    fontSize: 12,
+    fontVariant: ["tabular-nums"],
+    minWidth: 42,
+    fontWeight: "600",
+  },
+  chapterTimeActive: { color: colors.accent },
+  chapterTitle: { color: colors.textSecondary, fontSize: 13, flex: 1 },
+  chapterTitleActive: { color: colors.textPrimary, fontWeight: "700" },
 });

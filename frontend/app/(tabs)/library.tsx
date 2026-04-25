@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,17 @@ export default function LibraryTab() {
   const router = useRouter();
   const { subscriptions, unsubscribe, downloads } = useLibrary();
   const [editing, setEditing] = useState(false);
+  const [filter, setFilter] = useState("");
+
+  const filteredSubs = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return subscriptions;
+    return subscriptions.filter((s) => {
+      const name = (s.collectionName || "").toLowerCase();
+      const artist = (s.artistName || "").toLowerCase();
+      return name.includes(q) || artist.includes(q);
+    });
+  }, [subscriptions, filter]);
 
   const confirmUnsubscribe = (p: SubscribedPodcast) => {
     Alert.alert(
@@ -92,10 +104,36 @@ export default function LibraryTab() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={subscriptions}
-          keyExtractor={(p) => String(p.collectionId)}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 160 }}
+        <>
+          <View style={styles.filterRow}>
+            <Ionicons name="search" size={16} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+            <TextInput
+              style={styles.filterInput}
+              placeholder="Filter your subscriptions"
+              placeholderTextColor={colors.textTertiary}
+              value={filter}
+              onChangeText={setFilter}
+              autoCorrect={false}
+              autoCapitalize="none"
+              testID="library-filter-input"
+            />
+            {filter.length > 0 && (
+              <TouchableOpacity onPress={() => setFilter("")} hitSlop={8} testID="library-filter-clear">
+                <Ionicons name="close-circle" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <FlatList
+            data={filteredSubs}
+            keyExtractor={(p) => String(p.collectionId)}
+            contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: 160 }}
+            ListEmptyComponent={
+              <View style={{ paddingTop: 40, alignItems: "center" }}>
+                <Text style={{ color: colors.textTertiary, fontSize: 13 }}>
+                  No subscriptions match "{filter}"
+                </Text>
+              </View>
+            }
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.row}
@@ -130,7 +168,8 @@ export default function LibraryTab() {
               )}
             </TouchableOpacity>
           )}
-        />
+          />
+        </>
       )}
     </View>
   );
@@ -139,6 +178,25 @@ export default function LibraryTab() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    paddingVertical: 4,
+  },
   eyebrow: {
     color: colors.accent,
     fontSize: 11,

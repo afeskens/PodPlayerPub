@@ -23,6 +23,7 @@ export type FeedEpisode = {
   duration: string;
   image: string;
   isVideo?: boolean;
+  chaptersUrl?: string;
 };
 
 export type Feed = {
@@ -141,6 +142,15 @@ export async function fetchFeed(feedUrl: string, limit = 100): Promise<Feed> {
     (rss as any).itunes?.image ||
     "";
 
+  // Pre-extract <podcast:chapters url="..."/> per <item> block from raw XML.
+  // react-native-rss-parser doesn't expose Podcasting 2.0 namespace tags, so
+  // we parse them ourselves and align by index with the parsed items.
+  const itemBlocks = xml.split(/<item[\s>]/i).slice(1).map((s) => s.split(/<\/item>/i)[0]);
+  const chapterUrls: string[] = itemBlocks.map((block) => {
+    const m = block.match(/<podcast:chapters\b[^>]*\burl=["']([^"']+)["']/i);
+    return m ? m[1] : "";
+  });
+
   const episodes: FeedEpisode[] = (rss.items || []).slice(0, limit).map((it: any, i: number) => {
     const rawDesc: string = it.description || it.content || it.itunes?.summary || "";
     return {
@@ -152,6 +162,7 @@ export async function fetchFeed(feedUrl: string, limit = 100): Promise<Feed> {
       duration: pickDuration(it),
       image: pickItemImage(it, feedImage),
       isVideo: isVideoItem(it),
+      chaptersUrl: chapterUrls[i] || undefined,
     };
   });
 
