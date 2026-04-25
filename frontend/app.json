@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.podcastplayer.app",
-      "versionCode": 14,
+      "versionCode": 16,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
@@ -49,6 +49,7 @@
         }
       ],
       "expo-asset",
+      "./plugins/withRNTPAndroidManifest",
       [
         "expo-notifications",
         {
