@@ -1,0 +1,38 @@
+# Patterns here are excluded from the EAS build upload tarball.
+# EAS reinstalls dependencies on its build server, so shipping
+# node_modules / build artifacts wastes bandwidth and time.
+# Syntax matches .gitignore.
+
+# Dependencies (EAS runs `yarn install` itself)
+node_modules/
+.yarn/
+.pnp.*
+
+# Local prebuild output (EAS runs prebuild itself in the cloud)
+android/
+ios/
+
+# Build / metro caches
+.expo/
+.metro-cache/
+.cache/
+dist/
+web-build/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated screenshot / debug captures
+*.tsbuildinfo
