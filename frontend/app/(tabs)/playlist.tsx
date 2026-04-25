@@ -48,8 +48,16 @@ export default function PlaylistTab() {
     );
   }, [downloads, setQueue]);
 
+  const isVideoFile = (d: DownloadedEpisode): boolean => {
+    if (d.isVideo) return true;
+    // Fallback: detect by extension on localUri or audioUrl. Catches downloads
+    // that were saved before the isVideo flag was added.
+    const candidates = [d.localUri, d.audioUrl].filter(Boolean) as string[];
+    return candidates.some((u) => /\.(mp4|m4v|mov|webm|mkv)(\?|#|$)/i.test(u));
+  };
+
   const playItem = (d: DownloadedEpisode) => {
-    if (d.isVideo) {
+    if (isVideoFile(d)) {
       router.push({
         pathname: "/video",
         params: {
