@@ -14,16 +14,20 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { searchPodcasts, SearchResult } from "../../src/api";
+import { SearchResult } from "../../src/api";
+import { searchPodcasts, PROVIDER_LABELS, ProviderId } from "../../src/searchProviders";
 import { useLibrary } from "../../src/context/LibraryContext";
+import { useSettings } from "../../src/context/SettingsContext";
 import { colors, fallbackArt, radius, spacing, emptyStateMic } from "../../src/theme";
 
 const SUGGESTIONS = ["News", "Comedy", "True Crime", "Tech", "Business", "Science", "Health"];
+const SOURCES: ProviderId[] = ["itunes", "podcastindex", "fyyd", "custom"];
 
 export default function SearchTab() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isSubscribed, subscribe, unsubscribe } = useLibrary();
+  const { searchSource, setSearchSource, buildProviderConfig } = useSettings();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,14 +47,14 @@ export default function SearchTab() {
     setError(null);
     setSearched(true);
     try {
-      const r = await searchPodcasts(trimmed, 30);
+      const r = await searchPodcasts(trimmed, buildProviderConfig());
       if (myId === reqIdRef.current) setResults(r);
     } catch (e: any) {
       if (myId === reqIdRef.current) setError(e?.message || "Search failed");
     } finally {
       if (myId === reqIdRef.current) setLoading(false);
     }
-  }, []);
+  }, [buildProviderConfig]);
 
   const onSubmit = () => {
     Keyboard.dismiss();
@@ -104,6 +108,29 @@ export default function SearchTab() {
               <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           )}
+        </View>
+
+        {/* Source segmented control */}
+        <View style={styles.sourceRow}>
+          {SOURCES.map((id) => {
+            const active = id === searchSource;
+            return (
+              <TouchableOpacity
+                key={id}
+                style={[styles.sourcePill, active && styles.sourcePillActive]}
+                onPress={() => {
+                  setSearchSource(id);
+                  if (query.trim()) doSearch(query);
+                }}
+                activeOpacity={0.85}
+                testID={`source-${id}`}
+              >
+                <Text style={[styles.sourcePillText, active && styles.sourcePillTextActive]}>
+                  {PROVIDER_LABELS[id]}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {!searched && (
@@ -215,6 +242,31 @@ export default function SearchTab() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   headerWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
+  sourceRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: spacing.sm,
+  },
+  sourcePill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sourcePillActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  sourcePillText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  sourcePillTextActive: {
+    color: colors.background,
+  },
   eyebrow: {
     color: colors.accent,
     fontSize: 11,

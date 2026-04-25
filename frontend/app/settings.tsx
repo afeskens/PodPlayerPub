@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { Linking } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Slider from "@react-native-community/slider";
 import { useSettings } from "../src/context/SettingsContext";
@@ -45,11 +46,19 @@ export default function SettingsScreen() {
   const {
     sleepTimerMinutes, sleepTimerRemainingSec, setSleepTimer,
   } = usePlayer();
+  const settings = useSettings();
   const [sleepSliderValue, setSleepSliderValue] = useState(sleepTimerMinutes);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [customUrl, setCustomUrl] = useState("");
   const [customAdding, setCustomAdding] = useState(false);
+  const [piKey, setPiKey] = useState(settings.podcastIndexKey);
+  const [piSecret, setPiSecret] = useState(settings.podcastIndexSecret);
+  const [csUrl, setCsUrl] = useState(settings.customSearchUrlTemplate);
+  const [csPath, setCsPath] = useState(settings.customSearchResultsPath);
+  const [csName, setCsName] = useState(settings.customSearchFieldName);
+  const [csFeed, setCsFeed] = useState(settings.customSearchFieldFeedUrl);
+  const [csArt, setCsArt] = useState(settings.customSearchFieldArtwork);
 
   // Keep slider in sync if timer auto-expires or is set elsewhere
   React.useEffect(() => {
@@ -188,6 +197,129 @@ export default function SettingsScreen() {
               <Text style={styles.actionSecondaryText}>Import OPML</Text>
             </TouchableOpacity>
           </View>
+        </Section>
+
+        <Section title="Search Sources">
+          <Text style={styles.desc}>
+            Choose which podcast directory to query when searching. Apple covers the mainstream catalog;
+            Podcast Index has many indie shows; Fyyd is community-curated; Custom lets you query your own JSON API.
+          </Text>
+          <View style={[styles.chips, { marginTop: spacing.sm }]}>
+            {(["itunes", "podcastindex", "fyyd", "custom"] as const).map((id) => {
+              const labels: Record<typeof id, string> = {
+                itunes: "Apple", podcastindex: "Podcast Index", fyyd: "Fyyd", custom: "Custom",
+              } as any;
+              const active = settings.searchSource === id;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => settings.setSearchSource(id)}
+                  activeOpacity={0.85}
+                  testID={`settings-source-${id}`}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{labels[id]}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {settings.searchSource === "podcastindex" && (
+            <View style={{ marginTop: spacing.md }}>
+              <Text style={styles.fieldLabel}>API Key</Text>
+              <TextInput
+                style={styles.urlInput}
+                value={piKey}
+                onChangeText={setPiKey}
+                onBlur={() => settings.setPodcastIndexCreds(piKey.trim(), piSecret.trim())}
+                placeholder="Your Podcast Index API key"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={[styles.fieldLabel, { marginTop: spacing.sm }]}>API Secret</Text>
+              <TextInput
+                style={styles.urlInput}
+                value={piSecret}
+                onChangeText={setPiSecret}
+                onBlur={() => settings.setPodcastIndexCreds(piKey.trim(), piSecret.trim())}
+                placeholder="Your Podcast Index API secret"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry
+              />
+              <TouchableOpacity
+                onPress={() => Linking.openURL("https://api.podcastindex.org/signup")}
+                style={{ marginTop: spacing.sm, alignSelf: "flex-start" }}
+              >
+                <Text style={{ color: colors.accent, fontSize: 12, fontWeight: "600" }}>
+                  Get a free key at api.podcastindex.org/signup ↗
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {settings.searchSource === "custom" && (
+            <View style={{ marginTop: spacing.md }}>
+              <Text style={styles.fieldLabel}>URL template (use {"{query}"} as the search-term placeholder)</Text>
+              <TextInput
+                style={styles.urlInput}
+                value={csUrl}
+                onChangeText={setCsUrl}
+                onBlur={() => settings.setCustomSearchConfig({ urlTemplate: csUrl.trim() })}
+                placeholder="https://example.com/api/search?q={query}"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Text style={[styles.fieldLabel, { marginTop: spacing.sm }]}>Results path (dot path, e.g. data.items)</Text>
+              <TextInput
+                style={styles.urlInput}
+                value={csPath}
+                onChangeText={setCsPath}
+                onBlur={() => settings.setCustomSearchConfig({ resultsPath: csPath.trim() })}
+                placeholder="results"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={[styles.fieldLabel, { marginTop: spacing.sm }]}>Field: title</Text>
+              <TextInput
+                style={styles.urlInput}
+                value={csName}
+                onChangeText={setCsName}
+                onBlur={() => settings.setCustomSearchConfig({ name: csName.trim() })}
+                placeholder="title"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={[styles.fieldLabel, { marginTop: spacing.sm }]}>Field: feed URL</Text>
+              <TextInput
+                style={styles.urlInput}
+                value={csFeed}
+                onChangeText={setCsFeed}
+                onBlur={() => settings.setCustomSearchConfig({ feedUrl: csFeed.trim() })}
+                placeholder="feedUrl"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={[styles.fieldLabel, { marginTop: spacing.sm }]}>Field: artwork (optional)</Text>
+              <TextInput
+                style={styles.urlInput}
+                value={csArt}
+                onChangeText={setCsArt}
+                onBlur={() => settings.setCustomSearchConfig({ artwork: csArt.trim() })}
+                placeholder="image"
+                placeholderTextColor={colors.textTertiary}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+          )}
         </Section>
 
         <Section title="Custom RSS Feed">
@@ -424,6 +556,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   chipText: { color: colors.textPrimary, fontSize: 13, fontWeight: "600" },
   chipTextActive: { color: colors.background },
+  fieldLabel: { color: colors.textSecondary, fontSize: 12, fontWeight: "600", marginBottom: 4 },
   infoRow: {
     flexDirection: "row", justifyContent: "space-between",
     paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border,
