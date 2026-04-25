@@ -138,3 +138,45 @@ export async function fetchFeed(feedUrl: string, limit = 100): Promise<Feed> {
     episodes,
   };
 }
+
+// Stable integer derived from a feed URL. Used as the `collectionId` for
+// custom (non-iTunes) podcast subscriptions. Must match
+// `opml.feedUrlToCollectionId` so that exporting → re-importing a custom
+// feed via OPML doesn't create a duplicate subscription.
+export function customFeedId(url: string): number {
+  const s = (url || "").trim();
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0; // djb2, 32-bit
+  }
+  return Math.abs(h);
+}
+
+// Convenience: fetch a feed URL and shape it into a SubscribedPodcast-like
+// payload (the caller decides whether to actually call subscribe()).
+export async function previewCustomFeed(url: string): Promise<{
+  collectionId: number;
+  collectionName: string;
+  artistName: string;
+  artworkUrl600: string;
+  feedUrl: string;
+  primaryGenreName: string;
+  episodeCount: number;
+}> {
+  const trimmed = (url || "").trim();
+  if (!/^https?:\/\//i.test(trimmed)) {
+    throw new Error("Please enter a full http(s):// URL");
+  }
+  const feed = await fetchFeed(trimmed, 3);
+  const title = (feed.title || "").trim();
+  if (!title) throw new Error("Feed has no <title> — is this an RSS feed?");
+  return {
+    collectionId: customFeedId(trimmed),
+    collectionName: title,
+    artistName: feed.author || "",
+    artworkUrl600: feed.image || "",
+    feedUrl: trimmed,
+    primaryGenreName: "Custom",
+    episodeCount: feed.episodes.length,
+  };
+}

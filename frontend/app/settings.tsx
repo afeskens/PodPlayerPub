@@ -8,6 +8,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -18,6 +19,7 @@ import { useLibrary } from "../src/context/LibraryContext";
 import { usePlayer } from "../src/context/PlayerContext";
 import { colors, radius, spacing } from "../src/theme";
 import { exportOpml, importOpml } from "../src/opml";
+import { previewCustomFeed } from "../src/api";
 
 const SKIP_MIN = 1;
 const SKIP_MAX = 20;
@@ -39,13 +41,15 @@ export default function SettingsScreen() {
     skipForward, skipBackward, storagePath, storageLabel,
     setSkipForward, setSkipBackward,
   } = useSettings();
-  const { subscriptions, downloads, subscribe } = useLibrary();
+  const { subscriptions, downloads, subscribe, isSubscribed } = useLibrary();
   const {
     sleepTimerMinutes, sleepTimerRemainingSec, setSleepTimer,
   } = usePlayer();
   const [sleepSliderValue, setSleepSliderValue] = useState(sleepTimerMinutes);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [customUrl, setCustomUrl] = useState("");
+  const [customAdding, setCustomAdding] = useState(false);
 
   // Keep slider in sync if timer auto-expires or is set elsewhere
   React.useEffect(() => {
@@ -73,6 +77,36 @@ export default function SettingsScreen() {
         Alert.alert("Import complete", msg);
       }
     } finally { setImporting(false); }
+  };
+
+  const handleAddCustomFeed = async () => {
+    const trimmed = customUrl.trim();
+    if (!trimmed) return;
+    setCustomAdding(true);
+    try {
+      const preview = await previewCustomFeed(trimmed);
+      if (isSubscribed(preview.collectionId)) {
+        Alert.alert("Already subscribed", `You're already subscribed to "${preview.collectionName}".`);
+        return;
+      }
+      await subscribe({
+        collectionId: preview.collectionId,
+        collectionName: preview.collectionName,
+        artistName: preview.artistName,
+        artworkUrl600: preview.artworkUrl600,
+        feedUrl: preview.feedUrl,
+        primaryGenreName: preview.primaryGenreName,
+      });
+      setCustomUrl("");
+      Alert.alert(
+        "Subscribed",
+        `Added "${preview.collectionName}" to your library${preview.episodeCount > 0 ? `\n(${preview.episodeCount} recent episodes available)` : ""}.`
+      );
+    } catch (e: any) {
+      Alert.alert("Couldn't add feed", e?.message || "Unknown error. Make sure the URL points to an RSS feed.");
+    } finally {
+      setCustomAdding(false);
+    }
   };
 
   return (
@@ -154,6 +188,47 @@ export default function SettingsScreen() {
               <Text style={styles.actionSecondaryText}>Import OPML</Text>
             </TouchableOpacity>
           </View>
+        </Section>
+
+        <Section title="Custom RSS Feed">
+          <Text style={styles.desc}>
+            Subscribe to a podcast that's not in the iTunes directory by pasting its RSS feed URL.
+          </Text>
+          <TextInput
+            style={styles.urlInput}
+            placeholder="https://example.com/feed.xml"
+            placeholderTextColor={colors.textSecondary}
+            value={customUrl}
+            onChangeText={setCustomUrl}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            returnKeyType="go"
+            editable={!customAdding}
+            onSubmitEditing={handleAddCustomFeed}
+            testID="custom-feed-url"
+          />
+          <TouchableOpacity
+            style={[
+              styles.actionBtn,
+              styles.actionPrimary,
+              { alignSelf: "flex-start", marginTop: spacing.sm },
+              (!customUrl.trim() || customAdding) && { opacity: 0.5 },
+            ]}
+            onPress={handleAddCustomFeed}
+            disabled={!customUrl.trim() || customAdding}
+            activeOpacity={0.85}
+            testID="custom-feed-subscribe-btn"
+          >
+            {customAdding ? (
+              <ActivityIndicator size="small" color={colors.background} />
+            ) : (
+              <Ionicons name="add-circle" size={16} color={colors.background} />
+            )}
+            <Text style={styles.actionPrimaryText}>
+              {customAdding ? "Loading…" : "Subscribe"}
+            </Text>
+          </TouchableOpacity>
         </Section>
 
         <Section title="Player">
@@ -311,6 +386,17 @@ const styles = StyleSheet.create({
   actionSecondary: { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
   actionPrimaryText: { color: colors.background, fontWeight: "700", fontSize: 13 },
   actionSecondaryText: { color: colors.textPrimary, fontWeight: "700", fontSize: 13 },
+  urlInput: {
+    backgroundColor: colors.surfaceSecondary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: Platform.OS === "ios" ? 12 : 10,
+    color: colors.textPrimary,
+    fontSize: 14,
+    marginTop: spacing.sm,
+  },
   rowLabel: { color: colors.textPrimary, fontSize: 13, fontWeight: "600", marginBottom: 8 },
   sliderLabelRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",

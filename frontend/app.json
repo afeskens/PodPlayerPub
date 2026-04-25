@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.podcastplayer.app",
-      "versionCode": 19,
+      "versionCode": 20,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#162e06"
