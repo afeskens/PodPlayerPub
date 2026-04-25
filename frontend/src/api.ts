@@ -22,6 +22,7 @@ export type FeedEpisode = {
   pubDate: string;
   duration: string;
   image: string;
+  isVideo?: boolean;
 };
 
 export type Feed = {
@@ -72,12 +73,35 @@ function stripHtml(s: string): string {
 function pickAudioUrl(item: any): string {
   // react-native-rss-parser exposes enclosures[] with { url, length, mimeType }
   const enclosures = item.enclosures || [];
+  // Prefer audio-typed enclosures, but fall back to video if that's all there is.
   const audio = enclosures.find(
     (e: any) => typeof e?.mimeType === "string" && e.mimeType.toLowerCase().includes("audio")
   );
   if (audio?.url) return audio.url;
+  const video = enclosures.find(
+    (e: any) => typeof e?.mimeType === "string" && e.mimeType.toLowerCase().includes("video")
+  );
+  if (video?.url) return video.url;
   if (enclosures[0]?.url) return enclosures[0].url;
   return "";
+}
+
+function isVideoItem(item: any): boolean {
+  const enclosures = item.enclosures || [];
+  // 1) Explicit video/* mimetype on the chosen enclosure
+  const hasVideoEnc = enclosures.some(
+    (e: any) => typeof e?.mimeType === "string" && e.mimeType.toLowerCase().startsWith("video/")
+  );
+  if (hasVideoEnc) {
+    // But only if there's no audio fallback (audio is preferred for podcasts)
+    const hasAudioEnc = enclosures.some(
+      (e: any) => typeof e?.mimeType === "string" && e.mimeType.toLowerCase().includes("audio")
+    );
+    if (!hasAudioEnc) return true;
+  }
+  // 2) Fallback: extension on the URL we'd actually play
+  const url: string = pickAudioUrl(item) || "";
+  return /\.(mp4|m4v|mov|webm|mkv)(\?|#|$)/i.test(url);
 }
 
 function pickItemImage(item: any, fallback: string): string {
@@ -127,6 +151,7 @@ export async function fetchFeed(feedUrl: string, limit = 100): Promise<Feed> {
       pubDate: it.published || "",
       duration: pickDuration(it),
       image: pickItemImage(it, feedImage),
+      isVideo: isVideoItem(it),
     };
   });
 

@@ -33,6 +33,7 @@ type LatestEp = {
   podcastName: string;
   podcastArtwork: string;
   feedUrl: string;
+  isVideo: boolean;
 };
 
 export default function LatestTab() {
@@ -75,6 +76,7 @@ export default function LatestTab() {
           podcastName: s.collectionName,
           podcastArtwork: s.artworkUrl600,
           feedUrl: s.feedUrl,
+          isVideo: !!e.isVideo,
         });
       }
     }
@@ -98,6 +100,17 @@ export default function LatestTab() {
 
   const playEpisode = (e: LatestEp) => {
     const dl = getDownload(e.id);
+    if (e.isVideo) {
+      router.push({
+        pathname: "/video",
+        params: {
+          url: dl?.localUri || e.audioUrl,
+          title: e.title,
+          podcastName: e.podcastName,
+        },
+      });
+      return;
+    }
     play({
       id: e.id,
       title: e.title,

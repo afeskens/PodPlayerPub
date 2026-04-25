@@ -10,6 +10,7 @@ export type DownloadableEpisode = {
   image?: string;
   podcastId?: number | string;
   podcastName?: string;
+  isVideo?: boolean;
 };
 
 export function parseDurationToSec(duration?: string): number {
@@ -100,6 +101,7 @@ export async function downloadEpisode(
       podcastId: ep.podcastId,
       durationSec: parseDurationToSec(ep.duration),
       addedAt: Date.now(),
+      isVideo: !!ep.isVideo,
     };
   } catch (e: any) {
     Alert.alert("Download failed", e?.message || "Unknown error");

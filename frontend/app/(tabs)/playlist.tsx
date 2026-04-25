@@ -18,11 +18,13 @@ import Slider from "@react-native-community/slider";
 import * as FileSystem from "expo-file-system";
 import { useLibrary, DownloadedEpisode } from "../../src/context/LibraryContext";
 import { usePlayer } from "../../src/context/PlayerContext";
+import { useRouter } from "expo-router";
 import { useSettings } from "../../src/context/SettingsContext";
 import { colors, fallbackArt, radius, spacing, emptyStateMic, formatTime } from "../../src/theme";
 
 export default function PlaylistTab() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { downloads, reorderDownloads, removeDownload, isPlayed, playedIds, markPlayed, unmarkPlayed } = useLibrary();
   const { skipForward, skipBackward } = useSettings();
   const {
@@ -47,6 +49,17 @@ export default function PlaylistTab() {
   }, [downloads, setQueue]);
 
   const playItem = (d: DownloadedEpisode) => {
+    if (d.isVideo) {
+      router.push({
+        pathname: "/video",
+        params: {
+          url: d.localUri,
+          title: d.title,
+          podcastName: d.podcastName || "",
+        },
+      });
+      return;
+    }
     play({
       id: d.id,
       title: d.title,

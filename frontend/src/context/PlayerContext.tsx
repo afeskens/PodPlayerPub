@@ -22,6 +22,7 @@ export type Episode = {
   podcastId?: string | number;
   podcastName?: string;
   podcastArtwork?: string;
+  isVideo?: boolean;
 };
 
 type PlayerState = {

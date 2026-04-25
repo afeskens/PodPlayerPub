@@ -74,6 +74,17 @@ export default function PodcastDetail() {
 
   const playEpisode = useCallback((ep: FeedEpisode) => {
     const dl = getDownload(ep.id);
+    if (ep.isVideo) {
+      router.push({
+        pathname: "/video",
+        params: {
+          url: dl?.localUri || ep.audioUrl,
+          title: ep.title,
+          podcastName: String(params.name || feed?.title || ""),
+        },
+      });
+      return;
+    }
     play({
       id: ep.id,
       title: ep.title,
@@ -104,6 +115,7 @@ export default function PodcastDetail() {
         image: ep.image || String(params.art || ""),
         podcastId: collectionId,
         podcastName: String(params.name || feed?.title || ""),
+        isVideo: !!ep.isVideo,
       },
       storagePath,
       (pct) => setDownloadingIds((s) => ({ ...s, [ep.id]: pct }))

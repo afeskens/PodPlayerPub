@@ -21,6 +21,7 @@ export type DownloadedEpisode = {
   durationSec?: number;
   sizeBytes?: number;
   addedAt: number;
+  isVideo?: boolean;
 };
 
 const SUBS_KEY = "@pp:subscriptions";
